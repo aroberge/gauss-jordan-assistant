@@ -1,7 +1,7 @@
 # To do/steps to implement:
 
  - [x] print formatted matrix with integer entries in console
- - [ ] print formatted matrix with Fractions entries in console
+ - [x] print formatted matrix with Fractions entries in console
  - [ ] define matrix command (possibly `mat n x m`) which prompts user for matrix entries
    - [ ] possible prompt: "Entrez une ligne"
  - [ ] implement the same for augmented matrices, possibly using the notation: `mat n x m | p`
