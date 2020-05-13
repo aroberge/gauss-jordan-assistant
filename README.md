@@ -17,3 +17,6 @@ Commands will include:
 
  Numbers will either int or instances of fractions.Fractions. Internally, fractions.Fractions will be used for all computations
 
+## Requirements
+
+Python 3.8+
