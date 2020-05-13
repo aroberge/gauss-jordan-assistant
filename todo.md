@@ -6,8 +6,8 @@
  - [x] print formatted matrix with Fractions entries in console
  - [x] define matrix command (possibly `mat n x m`) which prompts user for matrix entries
    - [x] possible prompt: "Entrez une ligne avec m nombres"
- - [ ] implement the same for augmented matrices, possibly using the notation: `mat n x m | p`
- - [ ] implement error message for command that cannot be parsed
+ - [x] implement the same for augmented matrices, possibly using the notation: `mat n x m | p`
+ - [x] implement error message for command that cannot be parsed
  - [ ] parse commands for row operations
    - [ ] L_i <--> L_j  (i and j are integers)
      - [ ] allow not including underscore ?
