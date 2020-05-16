@@ -6,13 +6,9 @@ Requires Python 3.8+
 from fractions import Fraction
 import re
 
-
-# The following regex are defined with the re.I flag, which means to ignore
-# case, and are completely permissive in the amount of space
-# they allow between each token.
-# Useful resource for testing: https://regex101.com/
-
 re_quit = re.compile(r"(quit|exit).*", re.I)
+
+re_help = re.compile(r"(help|aide).*", re.I)
 
 # mat 3 x 4
 re_mat = re.compile(r"mat\s*(\d+)\s*x\s*(\d+)\s*$", re.I)
@@ -21,9 +17,38 @@ re_mat = re.compile(r"mat\s*(\d+)\s*x\s*(\d+)\s*$", re.I)
 re_aug_mat = re.compile(r"mat\s*(\d+)\s*x\s*(\d+)\s*\|\s*(\d+)\s*$", re.I)
 
 # matches integers or fractions as in 1 22 2/33 , etc.
-re_fract = re.compile(r"(\d+/*\d*)")
+re_fract = re.compile(r"(\d+/?\d*)")
+
+# We limit the number of rows at 9 or fewer
+# The following matches L_2 <--> L_3 and similar operations
+re_row_interchange = re.compile(r"\s*L_?(\d)\s*<-+>\s*L_?(\d)\s*$")
+# This matches something like 1/2 L_3 --> L_3
+re_row_scaling = re.compile(r"\s*(\d+/?\d*)\s*L_?(\d)\s*-+>\s*L_?(\d)\s*$")
+# This matches something like L_2 - L_3 --> L_2
+re_row_lin_comb1 = re.compile(
+    r"\s*L_?(\d)\s*-+>\s*L_?(\d)\s*(\+|-)\s*L_?(\d)\s*$"
+)
+# This matches something like L_2 + 1/2 L_3 --> L_2
+re_row_lin_comb2 = re.compile(
+    r"\s*L_?(\d)\s*-+>\s*L_?(\d)\s*(\+|-)\s*(\d+/?\d*)\s*L_?(\d)\s*$"
+)
 
 CREATE_NEW_MATRIX = "new mat"
+
+LEFT_RIGHT_ARROW = "⬌"
+RIGHT_ARROW = "➞"
+
+
+allowed_row_ops = """Opérations élémentaires permises:
+
+L_i  <-->  L_j
+
+L_i  +/-  f L_j  -->  L_i
+
+f L_i  -->  L_i
+
+où f est un entier ou une fraction.
+"""
 
 
 class Assistant:
@@ -39,6 +64,8 @@ class Assistant:
                 break
             elif self.mode == CREATE_NEW_MATRIX:
                 self.get_rows()
+                self.mode = self.get_row_operation()
+                self.prompt = self.default_prompt
 
     def get_rows(self):
         self.prompt = f"Entrez une ligne avec ({self.matrix.total_nb_cols} nombres) > "
@@ -47,10 +74,38 @@ class Assistant:
             command = input(self.prompt)
             if row := re.findall(re_fract, command):
                 done = self.matrix.add_row(row)
-            if done:
-                self.matrix.console_print()
-                break
+                if done:
+                    self.matrix.console_print()
+                    break
         self.prompt = self.default_prompt
+
+    def get_row_operation(self):
+        self.prompt = "Opération sur les lignes > "
+        while True:
+            command = input(self.prompt)
+            if op := re.search(re_row_interchange, command):
+                print(op.groups())
+                print(f"Interchange de lignes: L_{op.group(1)} <--> L_{op.group(2)}")
+            elif op := re.search(re_row_scaling, command):
+                print(op.groups())
+                print(f"Multiplication par un scalaire: {op.group(1)} L_{op.group(2)}  -->  L_{op.group(3)}")
+            elif op := re.search(re_row_lin_comb1, command):
+                print(op.groups())
+                print(
+                    f"Combinaison linéaire: L_{op.group(1)} L_{op.group(2)} {op.group(3)} -->  L_{op.group(4)}"
+                )
+            elif op := re.search(re_row_lin_comb2, command):
+                print(op.groups())
+                print(
+                    f"Combinaison linéaire: L_{op.group(1)} L_{op.group(2)} {op.group(3)} L_{op.group(4)}  -->  L_{op.group(5)}"
+                )
+            elif re.search(re_quit, command):
+                return "quit"
+            elif re.search(re_help, command):
+                print(allowed_row_ops)
+            else:
+                print("Opération non reconnue.")
+                print(allowed_row_ops)
 
     def parse(self, command):
         if re.search(re_quit, command):
@@ -59,7 +114,9 @@ class Assistant:
             self.matrix = Matrix(int(match.group(1)), int(match.group(2)))
             return CREATE_NEW_MATRIX
         elif match := re.search(re_aug_mat, command):
-            self.matrix = Matrix(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+            self.matrix = Matrix(
+                int(match.group(1)), int(match.group(2)), int(match.group(3))
+            )
             return CREATE_NEW_MATRIX
         else:
             print("Je ne reconnais pas cette commande")
