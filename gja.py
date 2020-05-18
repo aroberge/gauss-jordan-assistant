@@ -1,6 +1,6 @@
 """Gauss-Jordan assistant
 
-Requires Python 3.8+
+Requires Python 3.8+ and Rich (https://github.com/willmcgugan/rich)
 """
 
 from fractions import Fraction
@@ -11,63 +11,103 @@ re_quit = re.compile(r"(quit|exit).*", re.IGNORECASE)
 re_help = re.compile(r"(help|aide).*", re.IGNORECASE)
 
 # mat 3 x 4
-re_mat = re.compile(r"""\s*     # ignore spaces
-                        mat
-                        \s*
-                        (\d+)   # one or more digits
-                        \s*
-                        x
-                        \s*
-                        (\d+)
-                        \s*
-                        $       # to the end of the line
-                        """, re.VERBOSE | re.IGNORECASE)
+re_mat = re.compile(
+    r"""^\s* # at line beginning but ignore spaces
+        mat
+        \s*
+        (\d+)   # one or more digits
+        \s*
+        x
+        \s*
+        (\d+)
+        \s*
+        $       # to the end of the line
+        """,
+    re.VERBOSE | re.IGNORECASE,
+)
 
 # mat 3 x 4 | 1
-re_aug_mat = re.compile(r"""\s* # ignore spaces
-                        mat
-                        \s*
-                        (\d+)   # one or more digits
-                        \s*
-                        x       # x
-                        \s*
-                        (\d+)   #
-                        \s*
-                        \|      # vertical bar needs escaping
-                        \s*
-                        (\d+)   #
-                        \s*
-                        $       # to the end of the line
-                        """, re.VERBOSE | re.IGNORECASE)
+re_aug_mat = re.compile(
+    r"""^\s* # at line beginning but ignore spaces
+        mat
+        \s*
+        (\d+)   # one or more digits
+        \s*
+        x       # x
+        \s*
+        (\d+)   #
+        \s*
+        \|      # vertical bar needs escaping
+        \s*
+        (\d+)   #
+        \s*
+        $       # to the end of the line
+        """,
+    re.VERBOSE | re.IGNORECASE,
+)
 
 # matches integers or fractions as in 1 22 2/33 , etc.
 re_fract = re.compile(r"(\d+/?\d*)")  # /?  means zero or 1 /
 
 # We limit the number of rows at 9 or fewer
 # The following matches L_2 <--> L_3 and similar operations
-re_row_interchange = re.compile(r"""
-                                \s*
-                                L_?    # zero or one underscore
-                                (\d)   # single digit for row number
-                                \s*
-                                <-+>   # one or more - between < >
-                                \s*
-                                L_?
-                                (\d)
-                                \s*
-                                $""", re.VERBOSE)
+re_row_interchange = re.compile(
+    r"""^\s*
+        L_?    # zero or one underscore
+        (\d)   # single digit for row number
+        \s*
+        <-+>   # one or more - between < >
+        \s*
+        L_?
+        (\d)
+        \s*
+        $""",
+    re.VERBOSE,
+)
 # This matches something like 1/2 L_3 --> L_3
-re_row_scaling = re.compile(r"\s*(\d+/?\d*)\s*L_?(\d)\s*-+>\s*L_?(\d)\s*$")
+re_row_scaling = re.compile(
+    r"""^\s*
+        (\d+/?\d*)  # integer or fraction
+        \s*
+        L_?(\d)  # original line number
+        \s*
+        -+>      # arrow -->
+        \s*L_?(\d)  # target line number
+        \s*$""",
+    re.VERBOSE,
+)
 # This matches something like L_2 - L_3 --> L_2
 re_row_lin_combo_1 = re.compile(
-    r"\s*L_?(\d)\s*-+>\s*L_?(\d)\s*(\+|-)\s*L_?(\d)\s*$"
+    r"""^\s*
+        L_?(\d)  # original line
+        \s*
+        (\+|-)  # plus or minus
+        \s*
+        L_?(\d)   # other line
+        \s*
+        -+>   # arrow -->
+        \s*
+        L_?(\d)  # target line
+        \s*$""",
+    re.VERBOSE,
 )
 # This matches something like L_2 + 1/2 L_3 --> L_2
 re_row_lin_combo_2 = re.compile(
-    r"\s*L_?(\d)\s*-+>\s*L_?(\d)\s*(\+|-)\s*(\d+/?\d*)\s*L_?(\d)\s*$"
+    r"""^\s*
+        L_?(\d)  # original line
+        \s*
+        (\+|-)  # plus or minus
+        \s*
+        (\d+/?\d*)  # integer or fraction
+        \s*
+        L_?(\d)   # other line
+        \s*
+        -+>  # arrow -->
+        \s*
+        L_?(\d)  # target line
+        \s*$""",
+    re.VERBOSE,
 )
-
-CREATE_NEW_MATRIX = "new mat"
 
 
 help = """Commandes reconnues
@@ -96,20 +136,34 @@ class Assistant:
     def __init__(self):
         self.prompt = self.default_prompt = "> "
         self.matrix = None
+        self.interact()
 
     def new_matrix(self, nb_rows, nb_cols, nb_augmented_cols=0):
+        """Sets the parameters for a new matrix"""
         self.matrix = []
         self.nb_requested_rows = nb_rows
         self.nb_rows = 0
         self.nb_cols = nb_cols
         self.nb_augmented_cols = nb_augmented_cols
         self.total_nb_cols = nb_cols + nb_augmented_cols
+        self.new_matrix_get_rows()
 
-        self.rows = None
-        self.col_indx = None
-        self.augm_col_indx = None
+    def new_matrix_get_rows(self):
+        """Gets the coefficients of a new matrix"""
+        self.prompt = f"Entrez une ligne avec ({self.total_nb_cols} nombres) > "
+        while True:
+            done = False
+            command = input(self.prompt)
+            if row := re.findall(re_fract, command):
+                done = self.new_matrix_add_row(row)
+                if done:
+                    break
+            else:
+                print("Format non reconnu.")
+        self.prompt = self.default_prompt
 
-    def add_row(self, row):
+    def new_matrix_add_row(self, row):
+        """Adds a single row of coefficients for a new matrix"""
         try:
             row = [Fraction(str(entry)) for entry in row]
         except Exception:
@@ -150,59 +204,77 @@ class Assistant:
     def interact(self):
         while True:
             command = input(self.prompt)
-            self.mode = self.parse(command)
-            if self.mode == "quit":
+            if re.search(re_quit, command):
                 break
-            elif self.mode == CREATE_NEW_MATRIX:
-                self.get_rows()
 
-    def get_rows(self):
-        self.prompt = f"Entrez une ligne avec ({self.total_nb_cols} nombres) > "
-        while True:
-            done = False
-            command = input(self.prompt)
-            if row := re.findall(re_fract, command):
-                done = self.add_row(row)
-                if done:
-                    self.console_print()
-                    break
+            elif re.search(re_help, command):
+                print(help)
+                continue
+
+            elif op := re.search(re_mat, command):
+                self.new_matrix(int(op.group(1)), int(op.group(2)))
+
+            elif op := re.search(re_aug_mat, command):
+                self.new_matrix(int(op.group(1)), int(op.group(2)), int(op.group(3)))
+
+            elif op := re.search(re_row_interchange, command):
+                self.interchange_rows(op.groups())
+
+            elif op := re.search(re_row_scaling, command):
+                self.scale_row(op.groups())
+
+            elif op := re.search(re_row_lin_combo_1, command):
+                self.linear_combo_1(op.groups())
+
+            elif op := re.search(re_row_lin_combo_2, command):
+                self.linear_combo_2(op.groups())
+
             else:
-                print("Format non reconnu.")
-        self.prompt = self.default_prompt
+                print("Opération non reconnue.")
+                continue
 
-    def parse(self, command):
-        if re.search(re_quit, command):
-            return "quit"
-        elif re.search(re_help, command):
-            print(help)
-        elif match := re.search(re_mat, command):
-            self.new_matrix(int(match.group(1)), int(match.group(2)))
-            return CREATE_NEW_MATRIX
-        elif match := re.search(re_aug_mat, command):
-            self.new_matrix(
-                int(match.group(1)), int(match.group(2)), int(match.group(3))
-            )
-            return CREATE_NEW_MATRIX
-        elif op := re.search(re_row_interchange, command):
-            print(f"Interchange de lignes: L_{op.group(1)} <--> L_{op.group(2)}")
-        elif op := re.search(re_row_scaling, command):
-            print(f"Multiplication par un scalaire: {op.group(1)} L_{op.group(2)}  -->  L_{op.group(3)}")
-        elif op := re.search(re_row_lin_combo_1, command):
-            print(
-                f"Combinaison linéaire: L_{op.group(1)} L_{op.group(2)} {op.group(3)} -->  L_{op.group(4)}"
-            )
-        elif op := re.search(re_row_lin_combo_2, command):
-            print(
-                f"Combinaison linéaire: L_{op.group(1)} L_{op.group(2)} {op.group(3)} L_{op.group(4)}  -->  L_{op.group(5)}"
-            )
-        else:
-            print("Opération non reconnue.")
+            if self.matrix is not None:
+                self.console_print()
 
+    def scale_row(self, params):
+        """   f L_i  -->  L_i"""
+        # TODO: add checks to make sure that row exists
+        factor, orig_row, target_row = params
+        if orig_row != target_row:
+            print("La multiplication par un scalaire doit transformer la même ligne.")
+            return
+        print(
+            f"Multiplication par un scalaire: {factor} L_{orig_row}  -->  L_{orig_row}"
+        )
+
+        # Convert from strings to relevant values
+        row = int(orig_row) - 1
+        factor = Fraction(factor)
+        self.matrix[row] = [
+            factor * self.matrix[row][col] for col in range(len(self.matrix[row]))
+        ]
+
+    def interchange_rows(self, params):
+        """L_i  <-->  L_j"""
+        # TODO: add error checking
+
+        row_1, row_2 = params
+
+        row_1 = int(row_1) - 1
+        row_2 = int(row_2) - 1
+        self.matrix[row_1], self.matrix[row_2] = self.matrix[row_2], self.matrix[row_1]
+
+    def linear_combo_1(self, params):
+        row_1, op, row_2, target_row = params
+        print("linear_combo_1", row_1, op, row_2, target_row)
+
+    def linear_combo_2(self, params):
+        row_1, op, factor, row_2, target_row = params
+        print("linear_combo_2", row_1, op, factor, row_2, target_row)
 
 
 def main():
-    a = Assistant()
-    a.interact()
+    Assistant()
 
 
 if __name__ == "__main__":
