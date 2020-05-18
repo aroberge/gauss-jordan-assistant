@@ -265,12 +265,32 @@ class Assistant:
         self.matrix[row_1], self.matrix[row_2] = self.matrix[row_2], self.matrix[row_1]
 
     def linear_combo_1(self, params):
+        """L_i  +/- L_j -->  L_i"""
+        # TODO: add error checking
         row_1, op, row_2, target_row = params
-        print("linear_combo_1", row_1, op, row_2, target_row)
+
+        row_1 = int(row_1) - 1
+        row_2 = int(row_2) - 1
+
+        pm = 1 if op == "+" else -1
+
+        self.matrix[row_1] = [
+            x + pm * y for x, y in zip(self.matrix[row_1], self.matrix[row_2])
+        ]
 
     def linear_combo_2(self, params):
+        """L_i  +/- f L_j -->  L_i"""
+        # TODO: add error checking
         row_1, op, factor, row_2, target_row = params
-        print("linear_combo_2", row_1, op, factor, row_2, target_row)
+        row_1 = int(row_1) - 1
+        row_2 = int(row_2) - 1
+        factor = Fraction(factor)
+
+        pm = 1 if op == "+" else -1
+
+        self.matrix[row_1] = [
+            x + factor * pm * y for x, y in zip(self.matrix[row_1], self.matrix[row_2])
+        ]
 
 
 def main():
