@@ -157,14 +157,14 @@ class Assistant:
                 self.get_rows()
 
     def get_rows(self):
-        self.prompt = f"Entrez une ligne avec ({self.matrix.total_nb_cols} nombres) > "
+        self.prompt = f"Entrez une ligne avec ({self.total_nb_cols} nombres) > "
         while True:
             done = False
             command = input(self.prompt)
             if row := re.findall(re_fract, command):
-                done = self.matrix.add_row(row)
+                done = self.add_row(row)
                 if done:
-                    self.matrix.console_print()
+                    self.console_print()
                     break
             else:
                 print("Format non reconnu.")
@@ -176,10 +176,10 @@ class Assistant:
         elif re.search(re_help, command):
             print(help)
         elif match := re.search(re_mat, command):
-            self.matrix = Matrix(int(match.group(1)), int(match.group(2)))
+            self.new_matrix(int(match.group(1)), int(match.group(2)))
             return CREATE_NEW_MATRIX
         elif match := re.search(re_aug_mat, command):
-            self.matrix = Matrix(
+            self.new_matrix(
                 int(match.group(1)), int(match.group(2)), int(match.group(3))
             )
             return CREATE_NEW_MATRIX
@@ -198,57 +198,6 @@ class Assistant:
         else:
             print("Opération non reconnue.")
 
-
-class Matrix:
-    def __init__(self, nb_rows, nb_cols, nb_augmented_cols=0):
-        self.matrix = []
-        self.nb_requested_rows = nb_rows
-        self.nb_rows = 0
-        self.nb_cols = nb_cols
-        self.nb_augmented_cols = nb_augmented_cols
-        self.total_nb_cols = nb_cols + nb_augmented_cols
-
-        self.rows = None
-        self.col_indx = None
-        self.augm_col_indx = None
-
-    def add_row(self, row):
-        try:
-            row = [Fraction(str(entry)) for entry in row]
-        except Exception:
-            print("Le format des nombres soumis est incorrect")
-            return False
-        if len(row) == self.nb_cols + self.nb_augmented_cols:
-            self.matrix.append(row)
-            if len(self.matrix) == self.nb_requested_rows:
-                self.nb_rows = self.nb_requested_rows
-                return True  # we are done
-        else:
-            print("Le nombre de coefficient soumis est incorrect")
-        return False
-
-    def console_print(self):
-        """Prints matrix with columns right-aligned, and at least two
-           space between each column"""
-        col_max_widths = [0 for x in range(self.total_nb_cols)]
-        spacing = 3  # minimum space between each column
-        # determine maximum width of each column
-        for row in self.matrix:
-            for col_idx, col_info in enumerate(zip(col_max_widths, row)):
-                max_width, entry = col_info
-                if len(str(entry)) > max_width:
-                    col_max_widths[col_idx] = len(str(entry))
-
-        col_format = ["{:>%ds}" % (width + spacing) for width in col_max_widths]
-
-        print()
-        for row in self.matrix:
-            for col_idx, column in enumerate(row):
-                if col_idx == self.nb_cols:
-                    print("  |", end="")
-                print(col_format[col_idx].format(str(column)), end="")
-            print("")
-        print("\n")
 
 
 def main():
