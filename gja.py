@@ -6,6 +6,26 @@ Requires Python 3.8+ and Rich (https://github.com/willmcgugan/rich)
 from fractions import Fraction
 import re
 
+from rich import box
+
+MATRIX = box.Box(
+    """\
+╭  ╮
+│ ││
+│ ││
+│ ││
+│ ││
+│ ││
+│ ││
+╰  ╯
+"""
+)
+from rich.table import Table
+from rich.console import Console
+
+console = Console()
+
+
 re_quit = re.compile(r"(quit|exit).*", re.IGNORECASE)
 
 re_help = re.compile(r"(help|aide).*", re.IGNORECASE)
@@ -47,7 +67,7 @@ re_aug_mat = re.compile(
 )
 
 # matches integers or fractions as in 1 22 2/33 , etc.
-re_fract = re.compile(r"(\d+/?\d*)")  # /?  means zero or 1 /
+re_fract = re.compile(r"(-?\d+/?\d*)")  # /?  means zero or 1 /
 
 # We limit the number of rows at 9 or fewer
 # The following matches L_2 <--> L_3 and similar operations
@@ -192,14 +212,57 @@ class Assistant:
 
         col_format = ["{:>%ds}" % (width + spacing) for width in col_max_widths]
 
-        print()
-        for row in self.matrix:
+        # print()
+        # for row in self.matrix:
+        #     for col_idx, column in enumerate(row):
+        #         if col_idx == self.nb_cols:
+        #             print("  |", end="")
+        #         print(col_format[col_idx].format(str(column)), end="")
+        #     print()
+        # print()
+
+        table = Table(
+            show_header=False,
+            box=MATRIX,
+            pad_edge=False,
+            padding=(0, 0),
+            style="deep_sky_blue1",
+        )
+        table.add_column(style="white")
+        if not self.nb_augmented_cols:
+            for row in self.matrix[:-1]:
+                current_row = ""
+                for col_idx, column in enumerate(row):
+                    current_row += col_format[col_idx].format(str(column))
+                table.add_row(current_row + spacing * " ")
+                table.add_row()  # extra spacing between rows
+
+            current_row = ""
+            row = self.matrix[-1]
             for col_idx, column in enumerate(row):
-                if col_idx == self.nb_cols:
-                    print("  |", end="")
-                print(col_format[col_idx].format(str(column)), end="")
-            print()
-        print()
+                current_row += col_format[col_idx].format(str(column))
+            table.add_row(current_row + spacing * " ")
+        else:
+            table.add_column(style="white")
+            for row in self.matrix[:-1]:
+                left, right = "", ""
+                for col_idx, column in enumerate(row):
+                    if col_idx >= self.nb_cols:
+                        right += col_format[col_idx].format(str(column))
+                    else:
+                        left += col_format[col_idx].format(str(column))
+                table.add_row(left + spacing * " ", right + spacing * " ")
+                table.add_row()
+            row = self.matrix[-1]
+            left, right = "", ""
+            for col_idx, column in enumerate(row):
+                if col_idx >= self.nb_cols:
+                    right += col_format[col_idx].format(str(column))
+                else:
+                    left += col_format[col_idx].format(str(column))
+            table.add_row(left + spacing * " ", right + spacing * " ")
+
+        console.print(table)
 
     def interact(self):
         while True:
