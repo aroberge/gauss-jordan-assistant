@@ -14,9 +14,9 @@
    - [x] f L_i --> L_i   (f is an int or fraction)
    - [x] L_i + f L_j --> L_i
 - [x] implement the various row operations as matrix transformations.
- - [ ] Do not implement undo last command; use inverse row operation instead (useful for teaching purpose)
+- [ ] print last performed row operation, with nice format.
+
 - [ ] Command to return to initial matrix (recommencer?) This could be useful to illustrate how different choices can lead to the same final answer
-- Keep track of history
 
  - [ ] Implement error messages for operations that are either useless (exchanging a
    row ith itself) or not a proper elementary row operation.
@@ -34,25 +34,20 @@
 
  - [ ] Record history of elementary row operations for producing LaTeX output
  - [ ] Save output in LaTeX format
-   - [ ] Save single matrix
-   - [ ] Save entire process
-   - [ ] Save for slides and for normal document. Slides output only show initial matrix, elementary operation, result, resuming on following slide with result as initial.
 
 - [ ] Possibly use something like https://tex.stackexchange.com/questions/532632/elementary-row-operation-labels-for-matrices instead of my standard version.
 
+## More
+
+ - [ ] Enable multiple row operations done in one step. This might be
+ particularly useful for LaTeX output.
+ - [ ] Use Rich to highlight leading zeros and pivots in a different colour.
+ - [ ] Automatically identify pivots in LaTeX ?  (or only for row echelon form and reduced form?)
 
 ## Potential additions for later
 
  - [ ] Possibly enable color customization
  - [ ] Enable support for languages other than French
  - [ ] Possibly support by default row operation commands done using either L or R, in any language.
- - [ ] Possibly recognize `row echelon form` and `reduced row echelon form` and print a message when such form is seen for the first time in a given process;
- this would apply in the console only.
 
- - [ ] Identify pivots (white background in console, circled characters in LaTeX?)
-
- - [ ] Enable multiple row operations done in one step. This might be
- particularly useful for LaTeX output.
-
- - [ ] Use Rich to highlight leading zeros and pivots in a different colour.
 

@@ -181,13 +181,17 @@ class Assistant:
         self.prompt = f"Entrez une ligne avec {self.total_nb_cols} coefficients : "
         while True:
             done = False
-            command = input(self.prompt)
+            command = self.user_input(self.prompt)
             if row := re.findall(re_fract, command):
                 done = self.new_matrix_add_row(row)
                 if done:
                     break
+            elif re.search(re_quit, command):
+                self.print_error("Entrée des données interrompue.")
+                self.matrix = None
+                break
             else:
-                print("Format non reconnu.")
+                self.print_error("Format non reconnu.")
         self.prompt = self.default_prompt
 
     def new_matrix_add_row(self, row):
@@ -195,7 +199,7 @@ class Assistant:
         try:
             row = [Fraction(str(entry)) for entry in row]
         except Exception:
-            print("Le format des coefficients soumis est incorrect.")
+            self.print_error("Le format des coefficients soumis est incorrect.")
             return False
         if len(row) == self.nb_cols + self.nb_augmented_cols:
             self.matrix.append(row)
@@ -203,7 +207,7 @@ class Assistant:
                 self.nb_rows = self.nb_requested_rows
                 return True  # we are done
         else:
-            print("Le nombre de coefficients soumis est incorrect.")
+            self.print_error("Le nombre de coefficients soumis est incorrect.")
         return False
 
     def console_print(self):
@@ -248,9 +252,19 @@ class Assistant:
 
         console.print(table)
 
+    @staticmethod
+    def print_error(text):
+        console.print("\n    [red]" + text)
+        console.print()
+
+    @staticmethod
+    def user_input(text):
+        console.print("[green]" + text, end=' ')
+        return input()
+
     def interact(self):
         while True:
-            command = input(self.prompt)
+            command = self.user_input(self.prompt)
             if re.search(re_quit, command):
                 break
 
@@ -277,7 +291,7 @@ class Assistant:
                 self.linear_combo_2(op.groups())
 
             else:
-                print("Opération non reconnue.")
+                self.print_error("Opération non reconnue.")
                 continue
 
             if self.matrix is not None:
@@ -288,11 +302,8 @@ class Assistant:
         # TODO: add checks to make sure that row exists
         factor, orig_row, target_row = params
         if orig_row != target_row:
-            print("La multiplication par un scalaire doit transformer la même ligne.")
+            self.print_error("La multiplication par un scalaire doit transformer la même ligne.")
             return
-        print(
-            f"Multiplication par un scalaire: {factor} L_{orig_row}  -->  L_{orig_row}"
-        )
 
         # Convert from strings to relevant values
         row = int(orig_row) - 1
