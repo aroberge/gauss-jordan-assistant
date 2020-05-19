@@ -7,6 +7,9 @@ from fractions import Fraction
 import re
 
 from rich import box
+from rich.console import Console
+
+from rich.table import Table
 
 MATRIX = box.Box(
     """\
@@ -20,10 +23,30 @@ MATRIX = box.Box(
 ╰  ╯
 """
 )
-from rich.table import Table
-from rich.console import Console
+
 
 console = Console()
+
+
+help_fr = """Commandes reconnues
+
+Création de matrice:
+
+    mat m x n
+    mat m x n | p  (matrice augmentée)
+
+Opérations élémentaires permises:
+
+   L_i  <-->  L_j
+
+   L_i  +/-  [f] L_j  -->  L_i    (omettre f=1)
+
+   f L_i  -->  L_i
+
+   (f est un entier ou une fraction.)
+
+save_latex nom_de_fichier   # à faire
+"""
 
 
 re_quit = re.compile(r"(quit|exit).*", re.IGNORECASE)
@@ -130,28 +153,6 @@ re_row_lin_combo_2 = re.compile(
 )
 
 
-help = """Commandes reconnues
-
-Création de matrice:
-
-    mat m x n
-    mat m x n | p  (matrice augmentée)
-
-Opérations élémentaires permises:
-
-   L_i  <-->  L_j
-
-   L_i  +/-  [f] L_j  -->  L_i    (omettre f=1)
-
-   f L_i  -->  L_i
-
-   (f est un entier ou une fraction.)
-
-save_latex nom_de_fichier   # à faire
-save_beamer nom_de_fichier  # à faire
-"""
-
-
 class Assistant:
     def __init__(self):
         self.prompt = self.default_prompt = "> "
@@ -159,7 +160,14 @@ class Assistant:
         self.interact()
 
     def new_matrix(self, nb_rows, nb_cols, nb_augmented_cols=0):
-        """Sets the parameters for a new matrix"""
+        """Sets the parameters for a new matrix.
+
+        This is called after a command like
+
+            mat m x n
+            mat m x n | p
+
+        """
         self.matrix = []
         self.nb_requested_rows = nb_rows
         self.nb_rows = 0
@@ -169,8 +177,8 @@ class Assistant:
         self.new_matrix_get_rows()
 
     def new_matrix_get_rows(self):
-        """Gets the coefficients of a new matrix"""
-        self.prompt = f"Entrez une ligne avec ({self.total_nb_cols} nombres) > "
+        """Gets the elements of a new matrix, row by row"""
+        self.prompt = f"Entrez une ligne avec {self.total_nb_cols} coefficients : "
         while True:
             done = False
             command = input(self.prompt)
@@ -187,7 +195,7 @@ class Assistant:
         try:
             row = [Fraction(str(entry)) for entry in row]
         except Exception:
-            print("Le format des nombres soumis est incorrect.")
+            print("Le format des coefficients soumis est incorrect.")
             return False
         if len(row) == self.nb_cols + self.nb_augmented_cols:
             self.matrix.append(row)
@@ -202,7 +210,8 @@ class Assistant:
         """Prints matrix with columns right-aligned, and at least two
            space between each column"""
         col_max_widths = [0 for x in range(self.total_nb_cols)]
-        spacing = 2  # minimum space between each column
+        spacing = 2
+        padding = spacing * " "  # minimum space between each column
         # determine maximum width of each column
         for row in self.matrix:
             for col_idx, col_info in enumerate(zip(col_max_widths, row)):
@@ -212,15 +221,6 @@ class Assistant:
 
         col_format = ["{:>%ds}" % (width + spacing) for width in col_max_widths]
 
-        # print()
-        # for row in self.matrix:
-        #     for col_idx, column in enumerate(row):
-        #         if col_idx == self.nb_cols:
-        #             print("  |", end="")
-        #         print(col_format[col_idx].format(str(column)), end="")
-        #     print()
-        # print()
-
         table = Table(
             show_header=False,
             box=MATRIX,
@@ -229,38 +229,22 @@ class Assistant:
             style="deep_sky_blue1",
         )
         table.add_column(style="white")
-        if not self.nb_augmented_cols:
-            for row in self.matrix[:-1]:
-                current_row = ""
-                for col_idx, column in enumerate(row):
-                    current_row += col_format[col_idx].format(str(column))
-                table.add_row(current_row + spacing * " ")
-                table.add_row()  # extra spacing between rows
-
-            current_row = ""
-            row = self.matrix[-1]
-            for col_idx, column in enumerate(row):
-                current_row += col_format[col_idx].format(str(column))
-            table.add_row(current_row + spacing * " ")
-        else:
+        if self.nb_augmented_cols:
             table.add_column(style="white")
-            for row in self.matrix[:-1]:
-                left, right = "", ""
-                for col_idx, column in enumerate(row):
-                    if col_idx >= self.nb_cols:
-                        right += col_format[col_idx].format(str(column))
-                    else:
-                        left += col_format[col_idx].format(str(column))
-                table.add_row(left + spacing * " ", right + spacing * " ")
-                table.add_row()
-            row = self.matrix[-1]
-            left, right = "", ""
+
+        for index, row in enumerate(self.matrix):
+            main, augmented = "", ""
             for col_idx, column in enumerate(row):
                 if col_idx >= self.nb_cols:
-                    right += col_format[col_idx].format(str(column))
+                    augmented += col_format[col_idx].format(str(column))
                 else:
-                    left += col_format[col_idx].format(str(column))
-            table.add_row(left + spacing * " ", right + spacing * " ")
+                    main += col_format[col_idx].format(str(column))
+            if self.nb_augmented_cols:
+                table.add_row(main + padding, augmented + padding)
+            else:
+                table.add_row(main + padding)
+            if index < len(self.matrix) - 1:
+                table.add_row()
 
         console.print(table)
 

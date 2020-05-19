@@ -1,5 +1,15 @@
 # gauss-jordan-assistant
-Enabling live demonstration of Gauss-Jordan algorithm in a terminal/console
+
+Enabling live demonstration of the Gauss-Jordan algorithm in a terminal/console.
+
+## Requirements
+
+- Python 3.8+
+- Rich (https://pypi.org/project/rich/)
+
+To work properly on Windows (which is what I use), you need the following:
+
+- Windows Terminal (https://github.com/Microsoft/Terminal)
 
 ## Description
 
@@ -11,14 +21,8 @@ Commands will include:
     - Using elementary row operations to transform the matrix
     - Optionnally, save the entire process using LaTeX syntax.
 
- Dependencies: colorama
 
  By default, the language used will be French. Extension to support other languages will be done eventually.
 
  Numbers will either `int` or instances of `fractions.Fractions`. Internally, `fractions.Fractions` will be used for all computations
 
-
-
-## Requirements
-
-Python 3.8+

@@ -13,7 +13,7 @@
      - [x] allow not including underscore ?
    - [x] f L_i --> L_i   (f is an int or fraction)
    - [x] L_i + f L_j --> L_i
-- [ ] implement the various row operations as matrix transformations.
+- [x] implement the various row operations as matrix transformations.
  - [ ] Do not implement undo last command; use inverse row operation instead (useful for teaching purpose)
 - [ ] Command to return to initial matrix (recommencer?) This could be useful to illustrate how different choices can lead to the same final answer
 - Keep track of history
@@ -26,7 +26,8 @@
 
 ### Make it look nicer in the console
 
- - [ ] Assuming console with black background, use colorama to highlight zeros in red and vertical bar of augmented matrix in another color to be specified, with coefficients on other side of vertical bar a different color.
+- [x] Use Rich to surround numbers by colored brackets and inserting a
+      vertical bar for augmented matrices.
 
 
 ### Make it work for LaTeX
@@ -42,7 +43,7 @@
 
 ## Potential additions for later
 
- - [ ] Enable color customization
+ - [ ] Possibly enable color customization
  - [ ] Enable support for languages other than French
  - [ ] Possibly support by default row operation commands done using either L or R, in any language.
  - [ ] Possibly recognize `row echelon form` and `reduced row echelon form` and print a message when such form is seen for the first time in a given process;
@@ -53,4 +54,5 @@
  - [ ] Enable multiple row operations done in one step. This might be
  particularly useful for LaTeX output.
 
+ - [ ] Use Rich to highlight leading zeros and pivots in a different colour.
 
