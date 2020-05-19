@@ -6,10 +6,27 @@ Requires Python 3.8+ and Rich (https://github.com/willmcgugan/rich)
 from fractions import Fraction
 import re
 
-from rich import box
+from rich import box, print
 from rich.console import Console
+from rich.markdown import Markdown
 
 from rich.table import Table
+from rich.theme import Theme
+
+custom_theme = Theme(
+    {
+        "markdown.h1.border": "deep_sky_blue1",
+        "markdown.h1": "bold yellow",
+        "markdown.h2": "bold yellow underline",
+        "markdown.item.bullet": "bold spring_green4",
+        "markdown.code": "bold yellow",
+        "matrix": "deep_sky_blue1",
+        "error": "bold red",
+        "prompt": "spring_green4",
+        "row_operation": "yellow"
+    }
+)
+console = Console(theme=custom_theme)
 
 MATRIX = box.Box(
     """\
@@ -24,30 +41,50 @@ MATRIX = box.Box(
 """
 )
 
+subscript = {
+    0: "₀",
+    1: "₁",
+    2: "₂",
+    3: "₃",
+    4: "₄",
+    5: "₅",
+    6: "₆",
+    7: "₇",
+    8: "₈",
+    9: "₉",
+}
 
-console = Console()
+right_arrow = "🡢"
+left_right_arrow = "🡠🡢"
 
+help_fr = """# Liste des instructions
 
-help_fr = """Commandes reconnues
+## Création de matrice:
 
-Création de matrice:
+- `mat m x n`
+- `mat m x n | p`  (matrice augmentée)
 
-    mat m x n
-    mat m x n | p  (matrice augmentée)
+## Opérations élémentaires permises:
 
-Opérations élémentaires permises:
+- `L_i  <-->  L_j`
 
-   L_i  <-->  L_j
+- `L_i  +/-  [f] L_j  -->  L_i`    (omettre f=1)
 
-   L_i  +/-  [f] L_j  -->  L_i    (omettre f=1)
+- `f L_i  -->  L_i`
 
-   f L_i  -->  L_i
+f est un entier ou une fraction.
 
-   (f est un entier ou une fraction.)
+##  LaTeX
 
-save_latex nom_de_fichier   # à faire
+- save_latex nom_de_fichier   # à faire
+
+## Autres:
+
+- `aide` / `help`: imprime ceci
+- `quit`[ter] / `exit`: termine les opérations
+
 """
-
+help = Markdown(help_fr)
 
 re_quit = re.compile(r"(quit|exit).*", re.IGNORECASE)
 
@@ -229,14 +266,15 @@ class Assistant:
             show_header=False,
             box=MATRIX,
             pad_edge=False,
-            padding=(0, 0),
-            style="deep_sky_blue1",
+            padding=(1, 0),
+            collapse_padding=True,
+            style="matrix",
         )
         table.add_column(style="white")
         if self.nb_augmented_cols:
             table.add_column(style="white")
 
-        for index, row in enumerate(self.matrix):
+        for row in self.matrix:
             main, augmented = "", ""
             for col_idx, column in enumerate(row):
                 if col_idx >= self.nb_cols:
@@ -247,19 +285,17 @@ class Assistant:
                 table.add_row(main + padding, augmented + padding)
             else:
                 table.add_row(main + padding)
-            if index < len(self.matrix) - 1:
-                table.add_row()
 
         console.print(table)
 
     @staticmethod
     def print_error(text):
-        console.print("\n    [red]" + text)
-        console.print()
+        console.print("\n    [error]" + text)
+        print()
 
     @staticmethod
     def user_input(text):
-        console.print("[green]" + text, end=' ')
+        console.print("[prompt]" + text, end=" ")
         return input()
 
     def interact(self):
@@ -269,7 +305,7 @@ class Assistant:
                 break
 
             elif re.search(re_help, command):
-                print(help)
+                console.print(help)
                 continue
 
             elif op := re.search(re_mat, command):
@@ -302,12 +338,19 @@ class Assistant:
         # TODO: add checks to make sure that row exists
         factor, orig_row, target_row = params
         if orig_row != target_row:
-            self.print_error("La multiplication par un scalaire doit transformer la même ligne.")
+            self.print_error(
+                "La multiplication par un scalaire doit transformer la même ligne."
+            )
             return
-
         # Convert from strings to relevant values
         row = int(orig_row) - 1
+        if not (0 <= row < len(self.matrix)):
+            self.print_error("Cette ligne n'existe pas.")
+            return
+
         factor = Fraction(factor)
+        if factor == 0:
+            self.print_error("On ne peut pas multiplier une ligne par zéro.")
         self.matrix[row] = [
             factor * self.matrix[row][col] for col in range(len(self.matrix[row]))
         ]
@@ -317,9 +360,19 @@ class Assistant:
         # TODO: add error checking
 
         row_1, row_2 = params
-
         row_1 = int(row_1) - 1
         row_2 = int(row_2) - 1
+
+        if row_1 == row_2:
+            self.print_error("Cette opération est sans effet.")
+            return
+        if not (0 <= row_1 < len(self.matrix)):
+            self.print_error("La ligne %s n'existe pas." % (row_1 + 1))
+            return
+        if not (0 <= row_2 < len(self.matrix)):
+            self.print_error("La ligne %s n'existe pas." % (row_2 + 1))
+            return
+
         self.matrix[row_1], self.matrix[row_2] = self.matrix[row_2], self.matrix[row_1]
 
     def linear_combo_1(self, params):
@@ -329,9 +382,21 @@ class Assistant:
 
         row_1 = int(row_1) - 1
         row_2 = int(row_2) - 1
+        target_row = int(target_row) - 1
+        if not (0 <= row_1 < len(self.matrix)):
+            self.print_error("La ligne %s n'existe pas." % (row_1 + 1))
+            return
+        if not (0 <= row_2 < len(self.matrix)):
+            self.print_error("La ligne %s n'existe pas." % (row_2 + 1))
+            return
+        if row_1 != target_row:
+            self.print_error("Les lignes de départ et d'arrivée doivent être identiques.")
+            return
+        if row_1 == row_2:
+            self.print_error("On ne peut pas utiliser la même ligne dans une seule combinaison linéaire")
+            return
 
         pm = 1 if op == "+" else -1
-
         self.matrix[row_1] = [
             x + pm * y for x, y in zip(self.matrix[row_1], self.matrix[row_2])
         ]
@@ -342,7 +407,24 @@ class Assistant:
         row_1, op, factor, row_2, target_row = params
         row_1 = int(row_1) - 1
         row_2 = int(row_2) - 1
+        target_row = int(target_row) - 1
+        if not (0 <= row_1 < len(self.matrix)):
+            self.print_error("La ligne %s n'existe pas." % (row_1 + 1))
+            return
+        if not (0 <= row_2 < len(self.matrix)):
+            self.print_error("La ligne %s n'existe pas." % (row_2 + 1))
+            return
+        if row_1 != target_row:
+            self.print_error("Les lignes de départ et d'arrivée doivent être identiques.")
+            return
+        if row_1 == row_2:
+            self.print_error("On ne peut pas utiliser la même ligne dans une seule combinaison linéaire")
+            return
+
         factor = Fraction(factor)
+        if factor == 0:
+            self.print_error("Cette opération est sans effet.")
+            return
 
         pm = 1 if op == "+" else -1
 
