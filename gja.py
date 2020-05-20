@@ -25,7 +25,7 @@ dark_theme = Theme(  # suitable on a dark background
         "matrix": "deep_sky_blue1",
         "error": "bold red",
         "prompt": "spring_green4",
-        "row_operation": "yellow",
+        "row_operation": "bold yellow",
     }
 )
 
