@@ -47,6 +47,7 @@
 ## Potential additions for later
 
  - [ ] Possibly enable color customization
+  - [ ] Add at least one theme for dark background and one for light background
  - [ ] Enable support for languages other than French
  - [ ] Possibly support by default row operation commands done using either L or R, in any language.
 
