@@ -47,8 +47,7 @@ subscript = {0: "₀", 1: "₁", 2: "₂", 3: "₃", 4: "₄",
              5: "₅", 6: "₆", 7: "₇", 8: "₈", 9: "₉"}
 # fmt: on
 
-right_arrow = "🡢"
-left_right_arrow = "🡠🡢"
+RIGHT_ARROW = "->"  # "🡢"  Unicode arrow messes up alignment
 
 help_fr = """# Liste des instructions
 
@@ -227,6 +226,7 @@ class Assistant:
 
             if self.matrix is not None:
                 self.console_print()
+                self.current_row_operations.clear()
 
     def new_matrix(self, nb_rows, nb_cols, nb_augmented_cols=0):
         """Sets the parameters for a new matrix.
@@ -238,11 +238,13 @@ class Assistant:
 
         """
         self.matrix = []
+        self.previously_formatted = None
         self.nb_requested_rows = nb_rows
         self.nb_rows = 0
         self.nb_cols = nb_cols
         self.nb_augmented_cols = nb_augmented_cols
         self.total_nb_cols = nb_cols + nb_augmented_cols
+        self.current_row_operations = {}
         self.new_matrix_get_rows()
 
     def new_matrix_get_rows(self):
@@ -285,23 +287,20 @@ class Assistant:
            spacing between between each column.
         """
 
-        coeff_matrix, augmented = self.format_matrix()
+        matrix = self.format_matrix()
+        operations = self.format_row_operations()
 
-        table = Table(
-            show_header=False,
-            box=MATRIX,
-            padding=(0, 0),
-            style="matrix",
-            pad_edge=False,
-        )
-        table.add_column()
-        if augmented is None:
-            table.add_row(coeff_matrix)
+        if operations is not None:
+            display = Table().grid(padding=(0, 3))
+            display.add_column()
+            display.add_column()
+            display.add_column()
+            display.add_row(self.previously_formatted, operations, matrix)
+            console.print(display)
         else:
-            table.add_column()
-            table.add_row(coeff_matrix, augmented)
+            console.print(matrix)
 
-        console.print(table)
+        self.previously_formatted = matrix
 
     def format_matrix(self, spacing=2):
         """Formats matrix with columns right-aligned, and minimal number
@@ -340,24 +339,72 @@ class Assistant:
             coeff_matrix.add_row(content + padding)
 
         if not self.nb_augmented_cols:
-            return coeff_matrix, None
+            matrix = Table(
+                show_header=False,
+                box=MATRIX,
+                padding=(0, 0),
+                style="matrix",
+                pad_edge=False,
+            )
+            matrix.add_column()
+            matrix.add_row(coeff_matrix)
+            return matrix
 
         augmented = Table().grid()
         augmented.add_column(style="white")
 
         for row_idx, row in enumerate(self.matrix):
             content = ""
-            for col_idx, column in enumerate(row[self.nb_cols :]):
+            for col_idx, column in enumerate(row[self.nb_cols :], self.nb_cols):
                 content += col_format[col_idx].format(str(column))
             if row_idx != 0:
                 augmented.add_row(" ")
             augmented.add_row(content + padding)
 
-        return coeff_matrix, augmented
+        matrix = Table(
+            show_header=False,
+            box=MATRIX,
+            padding=(0, 0),
+            style="matrix",
+            pad_edge=False,
+        )
+        matrix.add_column()
+        matrix.add_column()
+        matrix.add_row(coeff_matrix, augmented)
+        return matrix
+
+    def format_row_operations(self):
+        """Formats row operations to align them with the changed line
+           in the matrix.
+        """
+        if not self.current_row_operations:
+            return None
+
+        max_str_length = 0
+        for op in self.current_row_operations:
+            length = len(self.current_row_operations[op])
+            if length > max_str_length:
+                max_str_length = length
+
+        fmt = "{:>%d}" % max_str_length
+        empty = " "
+
+        operations = Table().grid()
+        operations.add_column(style="yellow")
+
+        operations.add_row(empty)
+        for row_idx, row in enumerate(self.matrix):
+            if row_idx in self.current_row_operations:
+                operations.add_row(fmt.format(self.current_row_operations[row_idx]))
+            else:
+                operations.add_row(empty)
+            operations.add_row(empty)
+
+        return operations
 
     @staticmethod
     def print_error(text):
-        console.print("\n    [error]" + text, "\n")
+        console.print("\n    [error]" + text)
         print()
 
     def user_input(self):
@@ -375,11 +422,15 @@ class Assistant:
         row = row - 1
         target_row = target_row - 1
         if not self.valid_scale_row(row, target_row, factor):
+            self.current_row_operations.clear()
             return False
 
         self.matrix[row] = [
             factor * self.matrix[row][col] for col in range(len(self.matrix[row]))
         ]
+        self.current_row_operations[
+            target_row
+        ] = f"{factor} R_{row+1} {RIGHT_ARROW} R_{row+1}"
         return True
 
     def valid_scale_row(self, row, target_row, factor):
@@ -410,9 +461,14 @@ class Assistant:
         row_1 = row_1 - 1
         row_2 = row_2 - 1
         if not self.valid_interchange_rows(row_1, row_2):
+            self.current_row_operations.clear()
             return False
 
         self.matrix[row_1], self.matrix[row_2] = self.matrix[row_2], self.matrix[row_1]
+
+        self.current_row_operations[row_2] = f"R_{row_1+1} {RIGHT_ARROW} R_{row_2+1}"
+        self.current_row_operations[row_1] = f"R_{row_2+1} {RIGHT_ARROW} R_{row_1+1}"
+
         return True
 
     def valid_interchange_rows(self, row_1, row_2):
@@ -444,12 +500,17 @@ class Assistant:
         row_2 = row_2 - 1
         target_row = target_row - 1
         if not self.validate_linear_combo_1(row_1, row_2, target_row):
+            self.current_row_operations.clear()
             return False
 
         pm = 1 if op == "+" else -1
         self.matrix[row_1] = [
             x + pm * y for x, y in zip(self.matrix[row_1], self.matrix[row_2])
         ]
+        self.current_row_operations[
+            target_row
+        ] = f"R_{row_1+1} {op} R_{row_2+1} {RIGHT_ARROW} R_{target_row+1}"
+
         return True
 
     def validate_linear_combo_1(self, row_1, row_2, target_row):
@@ -490,12 +551,17 @@ class Assistant:
         target_row = target_row - 1
 
         if not self.validate_linear_combo_2(row_1, row_2, target_row, factor):
+            self.current_row_operations.clear()
             return False
 
         pm = 1 if op == "+" else -1
         self.matrix[row_1] = [
             x + factor * pm * y for x, y in zip(self.matrix[row_1], self.matrix[row_2])
         ]
+        self.current_row_operations[
+            target_row
+        ] = f"R_{row_1+1} {op} {factor} R_{row_2+1} {RIGHT_ARROW} R_{target_row+1}"
+
         return True
 
     def validate_linear_combo_2(self, row_1, row_2, target_row, factor):
