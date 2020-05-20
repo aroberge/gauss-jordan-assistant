@@ -1,4 +1,4 @@
-# gauss-jordan-assistant
+# Gauss-Jordan Assistant (gja)
 
 Enabling live demonstration of the Gauss-Jordan algorithm in a terminal/console.
 
