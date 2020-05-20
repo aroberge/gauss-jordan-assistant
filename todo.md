@@ -14,11 +14,11 @@
    - [x] f L_i --> L_i   (f is an int or fraction)
    - [x] L_i + f L_j --> L_i
 - [x] implement the various row operations as matrix transformations.
-- [ ] print last performed row operation, with nice format.
+- [x] print last performed row operation, with nice format.
 
 - [ ] Command to return to initial matrix (recommencer?) This could be useful to illustrate how different choices can lead to the same final answer
 
- - [ ] Implement error messages for operations that are either useless (exchanging a
+ - [x] Implement error messages for operations that are either useless (exchanging a
    row ith itself) or not a proper elementary row operation.
 
 ## Next, we have two options which can be done in any order
@@ -47,8 +47,8 @@
 ## Potential additions for later
 
  - [ ] Possibly enable color customization
-  - [ ] Add at least one theme for dark background and one for light background
- - [ ] Enable support for languages other than French
- - [ ] Possibly support by default row operation commands done using either L or R, in any language.
+  - [x] Add at least one theme for dark background and one for light background
+ - [x] Enable support for English and French
+ - [x] Possibly support by default row operation commands done using either L or R, in any language.
 
 
