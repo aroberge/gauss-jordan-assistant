@@ -19,10 +19,10 @@ The idea of this project is to enable live demonstration of using the Gauss-Jord
 
 
 Commands will include:
-    - Defining the size of a matrix; number of rows limited to 9.
-    - Entering its row
-    - Using elementary row operations to transform the matrix
-    - Optionnally, save the entire process using LaTeX syntax.
+
+- Defining the size of a matrix; number of rows limited to 9.
+- Using elementary row operations to transform the matrix
+- Eventually, save the entire process using LaTeX syntax.
 
 
 English and French are supported.
