@@ -349,6 +349,12 @@ class Assistant:
     def __init__(self):
         self.prompt = self.default_prompt = "> "
         self.matrix = None
+
+        # The following is used both for printing matrix element in
+        # console and in LaTeX source file
+        self.spacing = 2  # spacing between columns
+        self.padding = self.spacing * " "
+
         self.interact()
 
     def interact(self):
@@ -494,9 +500,24 @@ class Assistant:
 
         self.previously_formatted = matrix
 
-    def format_matrix(self, spacing=2):
-        """Formats matrix with columns right-aligned, and minimal number
-           of spaces between each column.
+    def get_column_format(self):
+        """Custom format for columns"""
+        col_max_widths = [0 for x in range(self.total_nb_cols)]
+
+        # determine maximum width of each column
+        for row in self.matrix:
+            for col_idx, col_info in enumerate(zip(col_max_widths, row)):
+                max_width, entry = col_info
+                if len(str(entry)) > max_width:
+                    col_max_widths[col_idx] = len(str(entry))
+
+        return ["{:>%ds}" % (width + self.spacing) for width in col_max_widths]
+
+    def format_submatrix(self, start, end):
+        """Formats the elements of a submatrix in right-justified columns.
+           By submatrix, we mean either the coefficient matrix, or the
+           elements on the right-hand side of the vertical bar for an
+           augmented matrix.
         """
         ##################################
         # Using rich, it would be easy to produce a grid of numbers
@@ -506,64 +527,40 @@ class Assistant:
         # For this reason, I use a more complex, but potentially
         # more versatile approach.
         #
-        col_max_widths = [0 for x in range(self.total_nb_cols)]
-        padding = spacing * " "  # minimum space between each column
+        col_format = self.get_column_format()
 
-        # determine maximum width of each column
-        for row in self.matrix:
-            for col_idx, col_info in enumerate(zip(col_max_widths, row)):
-                max_width, entry = col_info
-                if len(str(entry)) > max_width:
-                    col_max_widths[col_idx] = len(str(entry))
-
-        col_format = ["{:>%ds}" % (width + spacing) for width in col_max_widths]
-
-        coeff_matrix = Table().grid()
-
-        coeff_matrix.add_column(style="white")
+        matrix = Table().grid()
+        matrix.add_column(style="white")
 
         for row_idx, row in enumerate(self.matrix):
             content = ""
-            for col_idx, column in enumerate(row[0 : self.nb_cols]):
+            for col_idx, column in enumerate(row[start : end], start):
                 content += col_format[col_idx].format(str(column))
             if row_idx != 0:
-                coeff_matrix.add_row(" ")
-            coeff_matrix.add_row(content + padding)
+                matrix.add_row(" ")
+            matrix.add_row(content + self.padding)
+        return matrix
 
-        if not self.nb_augmented_cols:
-            matrix = Table(
-                show_header=False,
-                box=MATRIX,
-                padding=(0, 0),
-                style="matrix",
-                pad_edge=False,
-            )
-            matrix.add_column()
-            matrix.add_row(coeff_matrix)
-            return matrix
-
-        augmented = Table().grid()
-        augmented.add_column(style="white")
-
-        for row_idx, row in enumerate(self.matrix):
-            content = ""
-            for col_idx, column in enumerate(row[self.nb_cols :], self.nb_cols):
-                content += col_format[col_idx].format(str(column))
-            if row_idx != 0:
-                augmented.add_row(" ")
-            augmented.add_row(content + padding)
+    def format_matrix(self, spacing=2):
+        """Formats matrix for printing in console.
+        """
+        coeff_matrix = self.format_submatrix(0, self.nb_cols)
 
         matrix = Table(
             show_header=False,
             box=MATRIX,
-            padding=(0, 0),
             style="matrix",
             pad_edge=False,
         )
         matrix.add_column()
-        matrix.add_column()
-        matrix.add_row(coeff_matrix, augmented)
-        return matrix
+        if not self.nb_augmented_cols:
+            matrix.add_row(coeff_matrix)
+            return matrix
+        else:
+            augm = self.format_submatrix(self.nb_cols, self.total_nb_cols + 1)
+            matrix.add_column()
+            matrix.add_row(coeff_matrix, augm)
+            return matrix
 
     def format_row_operations(self):
         """Formats row operations to align them with the changed line
