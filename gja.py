@@ -23,14 +23,23 @@ The organisation is as follows:
 
 __version__ = "0.2"
 
-from fractions import Fraction
 import re
+import tkinter
+from tkinter import filedialog
 
-from rich import box, print
+from fractions import Fraction
+
+
+from rich.box import Box
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.table import Table
 from rich.theme import Theme
+
+# Since we already use Rich, might as well get pretty tracebacks.
+from rich.traceback import install
+
+install(extra_lines=2)
 
 
 # ===============================================
@@ -69,7 +78,7 @@ console = Console(theme=dark_theme)
 
 # Design our style of "box" to be used by rich
 
-MATRIX = box.Box(
+MATRIX = Box(
     """\
 ╭  ╮
 │ ││
@@ -122,8 +131,8 @@ Then, perform some elementary row operations:
 
 ## Other commands
 
-- save_latex filename   # todo
-- `help` / `aide`      : prints this
+- `latex` : saves as a LaTeX file.
+- `help` / `aide`
 - `quit` / `exit`
 """
 
@@ -151,9 +160,9 @@ Ensuite, faites des opérations élémentaires sur les lignes:
 
 ## Autres commandes
 
-- save_latex nom_de_fichier   # à faire
-- `aide` / `help`      : imprime ceci
-- `quit`[ter] / `exit` : termine les opérations
+- `latex` : sauvegarde dans un fichier LaTeX.
+- `aide` / `help`
+- `quit`[ter] / `exit`
 """
 
 
@@ -346,6 +355,7 @@ RIGHT_ARROW = "-->"  # used in printing row operations
 
 class Assistant:
     """Enables user-driven live demonstration of Gauss-Jordan algorithm."""
+
     def __init__(self):
         self.prompt = self.default_prompt = "> "
         self.matrix = None
@@ -379,9 +389,12 @@ class Assistant:
             elif command.lower() == "fr":
                 LANG = "fr"
 
+            elif command.lower() == "latex":
+                self.save_latex()
+                continue
+
             elif re.search(re_help, command):
                 console.print(_("help"), "\n")
-
                 continue
 
             elif op := re.search(re_mat, command):
@@ -534,7 +547,7 @@ class Assistant:
 
         for row_idx, row in enumerate(self.matrix):
             content = ""
-            for col_idx, column in enumerate(row[start : end], start):
+            for col_idx, column in enumerate(row[start:end], start):
                 content += col_format[col_idx].format(str(column))
             if row_idx != 0:
                 matrix.add_row(" ")
@@ -546,12 +559,7 @@ class Assistant:
         """
         coeff_matrix = self.format_submatrix(0, self.nb_cols)
 
-        matrix = Table(
-            show_header=False,
-            box=MATRIX,
-            style="matrix",
-            pad_edge=False,
-        )
+        matrix = Table(show_header=False, box=MATRIX, style="matrix", pad_edge=False,)
         matrix.add_column()
         if not self.nb_augmented_cols:
             matrix.add_row(coeff_matrix)
@@ -654,8 +662,12 @@ class Assistant:
         self.matrix[row_1], self.matrix[row_2] = self.matrix[row_2], self.matrix[row_1]
 
         R = _("R_or_L")
-        self.current_row_operations[row_2] = f"{R}_{row_1+1} {RIGHT_ARROW} {R}_{row_2+1}"
-        self.current_row_operations[row_1] = f"{R}_{row_2+1} {RIGHT_ARROW} {R}_{row_1+1}"
+        self.current_row_operations[
+            row_2
+        ] = f"{R}_{row_1+1} {RIGHT_ARROW} {R}_{row_2+1}"
+        self.current_row_operations[
+            row_1
+        ] = f"{R}_{row_2+1} {RIGHT_ARROW} {R}_{row_1+1}"
 
         return True
 
@@ -770,6 +782,26 @@ class Assistant:
             return str(number)
         else:
             return "\\GJAfrac{%d}{%d}" % (number.numerator, number.denominator)
+
+    def save_latex(self, event=None):
+        """Saves the entire operations done on current matrix as a
+           LaTeX file.
+        """
+        filename = None
+
+        localRoot = tkinter.Tk()
+        localRoot.withdraw()
+
+        try:
+            filename = filedialog.asksaveasfilename(
+                filetypes=(("LaTeX", "*.tex"),)
+            )
+        except FileNotFoundError:
+            pass
+        localRoot.destroy()
+        if filename is not None:
+            with open(filename, "w") as f:
+                f.write("This is a test")
 
 
 if __name__ == "__main__":
