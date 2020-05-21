@@ -1,9 +1,27 @@
 """Gauss-Jordan assistant
 
+Enabling user-driven live demonstration of the Gauss-Jordan algorithm
+in a terminal/console.
+
+Source: https://github.com/aroberge/gauss-jordan-assistant
+
 Requires Python 3.8+ and Rich (https://github.com/willmcgugan/rich)
+
+All the content is in this single file, for those that do not want
+to install from Pypi and simply copy and possibly modify to suit
+their individual needs.
+
+The organisation is as follows:
+
+1. Rich specific definitions
+2. Translations (French and English)
+3. String parsing using regular expressions
+4. Various LaTeX templates
+5. The main code
+
 """
 
-__version__ = "0.1"
+__version__ = "0.2"
 
 from fractions import Fraction
 import re
@@ -11,9 +29,13 @@ import re
 from rich import box, print
 from rich.console import Console
 from rich.markdown import Markdown
-
 from rich.table import Table
 from rich.theme import Theme
+
+
+# ===============================================
+# Rich specific definitions
+# ===============================================
 
 dark_theme = Theme(  # suitable on a dark background
     {
@@ -29,8 +51,6 @@ dark_theme = Theme(  # suitable on a dark background
     }
 )
 
-console = Console(theme=dark_theme)
-
 light_theme = Theme(  # suitable on a light background
     {
         "markdown.h1.border": "deep_sky_blue1",
@@ -45,6 +65,10 @@ light_theme = Theme(  # suitable on a light background
     }
 )
 
+console = Console(theme=dark_theme)
+
+# Design our style of "box" to be used by rich
+
 MATRIX = box.Box(
     """\
 ╭  ╮
@@ -58,7 +82,10 @@ MATRIX = box.Box(
 """
 )
 
-RIGHT_ARROW = "-->"
+# ===============================================
+# String translations
+# ===============================================
+
 LANG = "en"
 translations = {"en": {}, "fr": {}}
 
@@ -184,6 +211,11 @@ translations["fr"][
 ] = "Une combinaison linéaire requiert deux lignes différentes."
 
 
+# ===============================================
+# String parsing using regular expressions
+# ===============================================
+
+
 re_quit = re.compile(r"(quit|exit).*", re.IGNORECASE)
 
 re_help = re.compile(r"(help|aide).*", re.IGNORECASE)
@@ -238,7 +270,82 @@ re_row_lin_combo_1 = re.compile(
 )
 
 
+# ===============================================
+# LaTeX templates
+#
+# For LaTeX output, we use the beamer document class,
+# with each individual transformation intended to be shown
+# on a separate frame (aka slide).
+#
+# We also include a LaTeX command, \GJAfrac, with
+# two possible definitions, giving the possibility to
+# easily change how fractions are represented.
+#
+# Coefficient and augmented matrices are shown with
+# square brackets using the "bmatrix" environment.
+# Round brackets can be used instead if one replaces
+# "bmatrix" by "pmatrix".
+# ===============================================
+
+
+LaTeX_begin_document = """
+\\documentclass{beamer}
+%
+% augmented matrix from http://tex.stackexchange.com/questions/2233
+\\makeatletter
+\\renewcommand*\\env@matrix[1][*\\c@MaxMatrixCols r]{%
+    \\hskip -\arraycolsep
+    \\let\\@ifnextchar\new@ifnextchar
+    \array{#1}}
+\\makeatother
+
+\\newcommand{\\GJAfrac}[2]{#1/#2}
+%\\newcommand{\\GJAfrac}[2]{\\frac{#1}{#2}}
+
+\\begin{document}
+"""
+
+LaTeX_end_document = "\n\\end{document}"
+
+
+LaTeX_begin_frame = """
+
+\\begin{frame}[Slide %d]
+\\[
+\\begin{matrix}[ccc]
+
+"""
+
+LaTeX_end_frame = """
+\\end{matrix}
+\\]
+\\end{frame}
+
+%===========================================
+"""
+
+LaTeX_begin_bmatrix = """
+\\begin{bmatrix}[%s%s]
+"""
+
+LaTeX_end_bmatrix = "\n\\end{bmatrix}\n\n"
+
+LaTeX_begin_row_op_matrix = """
+\\begin{matrix}[r]
+"""
+
+LaTeX_end_row_op_matrix = "\n\\end{matrix}\n\n"
+
+
+# ===============================================
+
+
+RIGHT_ARROW = "-->"  # used in printing row operations
+# Warning: using unicode arrows instead could mess up the alignment
+
+
 class Assistant:
+    """Enables user-driven live demonstration of Gauss-Jordan algorithm."""
     def __init__(self):
         self.prompt = self.default_prompt = "> "
         self.matrix = None
@@ -391,14 +498,14 @@ class Assistant:
         """Formats matrix with columns right-aligned, and minimal number
            of spaces between each column.
         """
-        ##################
+        ##################################
         # Using rich, it would be easy to produce a grid of numbers
         # aligned and spaced "just right".  However, I want to have
         # the flexibility to style differently certain matrix elements,
         # such as the leading zeros for a given row, or the pivots.
         # For this reason, I use a more complex, but potentially
-        # versatile approach.
-        ##################
+        # more versatile approach.
+        #
         col_max_widths = [0 for x in range(self.total_nb_cols)]
         padding = spacing * " "  # minimum space between each column
 
@@ -656,6 +763,16 @@ class Assistant:
             self.print_error(_("No effect"))
             return False
         return True
+
+    def latex_format_frac(self, number):
+        """If number is an integer, it is returned as is;
+           if number is a fraction, it is returned as a pre-defined
+           LaTeX command.
+        """
+        if number.denominator == 1:
+            return str(number)
+        else:
+            return "\\GJAfrac{%d}{%d}" % (number.numerator, number.denominator)
 
 
 if __name__ == "__main__":
