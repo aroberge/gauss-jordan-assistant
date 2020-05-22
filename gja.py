@@ -219,6 +219,9 @@ translations["fr"][
     "Cannot use a single line"
 ] = "Une combinaison linéaire requiert deux lignes différentes."
 
+translations["en"]["Nothing to save"] = "Nothing to save: no matrix defined."
+translations["fr"]["Nothing to save"] = "Il n'y a aucune matrice de définie."
+
 
 # ===============================================
 # String parsing using regular expressions
@@ -318,7 +321,7 @@ LaTeX_end_document = "\\end{document}"
 
 
 LaTeX_begin_frame = """
-\\begin{frame}{Slide %d}
+\\begin{frame}{Frame %d}
 \\[
 \\begin{matrix}[ccc]
 """
@@ -374,6 +377,7 @@ class Assistant:
 
             if result and self.matrix is not None:
                 self.console_print()
+                self.update_latex_content()
                 self.current_row_operations.clear()
 
     def parse(self, command):
@@ -444,13 +448,17 @@ class Assistant:
 
         """
         self.matrix = []
-        self.previously_formatted = None
+        self.previously_formatted_matrix = None
         self.nb_requested_rows = nb_rows
         self.nb_rows = 0
         self.nb_cols = nb_cols
         self.nb_augmented_cols = nb_augmented_cols
         self.total_nb_cols = nb_cols + nb_augmented_cols
         self.current_row_operations = {}
+
+        self.latex_slide_no = 1
+        self.latex_content = [LaTeX_begin_document]
+        self.latex_previously_formatted_matrix = None
         return self.new_matrix_get_rows()
 
     def new_matrix_get_rows(self):
@@ -504,12 +512,55 @@ class Assistant:
             display.add_column()
             display.add_column()
             display.add_column()
-            display.add_row(self.previously_formatted, operations, matrix)
+            display.add_row(self.previously_formatted_matrix, operations, matrix)
             console.print(display)
         else:
             console.print(matrix)
 
-        self.previously_formatted = matrix
+        self.previously_formatted_matrix = matrix
+
+    def update_latex_content(self):
+        matrix = self.latex_format_matrix()
+        # operations = self.latex_format_row_operations()
+
+        self.latex_content.append(LaTeX_begin_frame % self.latex_slide_no)
+        if self.latex_previously_formatted_matrix is None:
+            self.latex_content.append(matrix)
+        else:
+            self.latex_content.append(self.latex_previously_formatted_matrix + " &\n"
+                                      + matrix)
+        self.latex_content.append(LaTeX_end_frame)
+        self.latex_slide_no += 1
+        self.latex_previously_formatted_matrix = matrix
+
+    def latex_format_matrix(self):
+        if self.nb_augmented_cols:
+            matrix = [
+                LaTeX_begin_bmatrix
+                % (("r" * self.nb_cols), ("|" + "r" * self.nb_augmented_cols))
+            ]
+        else:
+            matrix = [LaTeX_begin_bmatrix % (("r" * self.nb_cols), "")]
+
+        for row in self.matrix:
+            row_content = []
+            for col in row:
+                row_content.append(self.latex_format_frac(col))
+            matrix.append("  &  ".join(row_content) + r" \\")
+
+        matrix.append(LaTeX_end_bmatrix)
+
+        return "\n".join(matrix)
+
+    def latex_format_frac(self, number):
+        """If number is an integer, it is returned as a string;
+           if number is a fraction, it is returned as a pre-defined
+           LaTeX command.
+        """
+        if number.denominator == 1:
+            return str(number.numerator)
+        else:
+            return "\\GJAfrac{%d}{%d}" % (number.numerator, number.denominator)
 
     def get_column_format(self):
         """Custom format for columns"""
@@ -615,7 +666,7 @@ class Assistant:
         """
         row = row - 1
         target_row = target_row - 1
-        if not self.valid_scale_row(row, target_row, factor):
+        if not self.validate_scale_row(row, target_row, factor):
             self.current_row_operations.clear()
             return False
 
@@ -628,7 +679,7 @@ class Assistant:
         ] = f"{factor} {R}_{row+1} {RIGHT_ARROW} {R}_{row+1}"
         return True
 
-    def valid_scale_row(self, row, target_row, factor):
+    def validate_scale_row(self, row, target_row, factor):
         """Verifies that parameters in scaling transformation are valid.
            Returns False if invalid parameters, True otherwise.
         """
@@ -653,7 +704,7 @@ class Assistant:
         """
         row_1 = row_1 - 1
         row_2 = row_2 - 1
-        if not self.valid_interchange_rows(row_1, row_2):
+        if not self.validate_interchange_rows(row_1, row_2):
             self.current_row_operations.clear()
             return False
 
@@ -669,7 +720,7 @@ class Assistant:
 
         return True
 
-    def valid_interchange_rows(self, row_1, row_2):
+    def validate_interchange_rows(self, row_1, row_2):
         """Verifies that parameters in row exchange transformation are valid.
            Returns False if invalid parameters, True otherwise.
         """
@@ -771,41 +822,27 @@ class Assistant:
             return False
         return True
 
-    def latex_format_frac(self, number):
-        """If number is an integer, it is returned as is;
-           if number is a fraction, it is returned as a pre-defined
-           LaTeX command.
-        """
-        if number.denominator == 1:
-            return str(number)
-        else:
-            return "\\GJAfrac{%d}{%d}" % (number.numerator, number.denominator)
-
     def save_latex(self, event=None):
         """Saves the entire operations done on current matrix as a
            LaTeX file.
         """
+        if self.matrix is None:
+            self.print_error(_("Nothing to save"))
+            return
         filename = None
 
-        localRoot = tkinter.Tk()
-        localRoot.withdraw()
+        app = tkinter.Tk()
 
         try:
             filename = filedialog.asksaveasfilename(filetypes=(("LaTeX", "*.tex"),))
         except FileNotFoundError:
             pass
-        localRoot.destroy()
+        app.destroy()
         if filename is not None:
+            self.latex_content.append(LaTeX_end_document)
+            text = "\n".join(self.latex_content)
             with open(filename, "w") as f:
-                f.write(self.create_latex_content())
-
-    def create_latex_content(self):
-        parts = [LaTeX_begin_document]
-        parts.append(LaTeX_begin_frame % 1)
-        parts.append("Test")
-        parts.append(LaTeX_end_frame)
-        parts.append(LaTeX_end_document)
-        return "\n".join(parts)
+                f.write(text)
 
 
 if __name__ == "__main__":
