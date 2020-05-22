@@ -311,8 +311,8 @@ LaTeX_begin_document = """
     \\array{#1}}
 \\makeatother
 
-\\newcommand{\\GJAfrac}[2]{#1/#2}
-%\\newcommand{\\GJAfrac}[2]{\\frac{#1}{#2}}
+%\\newcommand{\\GJAfrac}[2]{#1/#2}
+\\newcommand{\\GJAfrac}[2]{\\frac{#1}{#2}}
 
 \\begin{document}
 """
@@ -527,8 +527,14 @@ class Assistant:
         if self.latex_previously_formatted_matrix is None:
             self.latex_content.append(matrix)
         else:
-            self.latex_content.append(self.latex_previously_formatted_matrix + " &\n"
-                                      + matrix)
+            operations = self.latex_format_row_operations()
+            self.latex_content.append(
+                self.latex_previously_formatted_matrix
+                + " &\n"
+                + operations
+                + " &\n"
+                + matrix
+            )
         self.latex_content.append(LaTeX_end_frame)
         self.latex_slide_no += 1
         self.latex_previously_formatted_matrix = matrix
@@ -561,6 +567,30 @@ class Assistant:
             return str(number.numerator)
         else:
             return "\\GJAfrac{%d}{%d}" % (number.numerator, number.denominator)
+
+    def latex_format_row_operations(self):
+        """Formats row operations to align them with the changed line
+           in the matrix.
+        """
+        if not self.current_row_operations:
+            return None
+
+        matrix = [LaTeX_begin_row_op_matrix]
+
+        for row_idx, row in enumerate(self.matrix):
+            if row_idx in self.current_row_operations:
+                matrix.append(
+                    "\\scriptstyle "
+                    + self.current_row_operations[row_idx].replace(
+                        RIGHT_ARROW, "\\longrightarrow"
+                    )
+                    + r"\\"
+                )
+            else:
+                matrix.append(r"\\")
+        matrix.append(LaTeX_end_row_op_matrix)
+
+        return "\n".join(matrix)
 
     def get_column_format(self):
         """Custom format for columns"""
