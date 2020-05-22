@@ -58,6 +58,7 @@ dark_theme = Theme(  # suitable on a dark background
         "prompt": "spring_green4",
         "row_operation": "bold yellow",
         "same_row": "bold white underline",
+        "echelon": "white on grey15",
     }
 )
 
@@ -73,6 +74,7 @@ light_theme = Theme(  # suitable on a light background
         "prompt": "spring_green4",
         "row_operation": "spring_green4",
         "same_row": "blue underline",
+        "echelon": "black on grey85",
     }
 )
 
@@ -224,6 +226,8 @@ translations["fr"][
 translations["en"]["Nothing to save"] = "Nothing to save: no matrix defined."
 translations["fr"]["Nothing to save"] = "Il n'y a aucune matrice de définie."
 
+translations["en"]["saved file"] = "Content saved in file %s"
+translations["fr"]["saved file"] = "Sauvegarde dans le fichier %s"
 
 # ===============================================
 # String parsing using regular expressions
@@ -357,14 +361,7 @@ class Assistant:
     def __init__(self):
         self.prompt = self.default_prompt = "> "
         self.matrix = None
-
-        # The following is used both for printing matrix element in
-        # console and in LaTeX source file
-        self.spacing = 2  # spacing between columns
-        self.padding = self.spacing * " "
-
         print("lang =", LANG)
-
         self.interact()
 
     def interact(self):
@@ -600,7 +597,16 @@ class Assistant:
                 if len(str(entry)) > max_width:
                     col_max_widths[col_idx] = len(str(entry))
 
-        return ["{:>%ds}" % (width + self.spacing) for width in col_max_widths]
+        return [" {:>%ds} " % width for width in col_max_widths]
+
+    def find_leading_zeros(self):
+        self.leading_zeros = set()
+        for row_idx, row in enumerate(self.matrix):
+            for col_idx, value in enumerate(row):
+                if value == 0:
+                    self.leading_zeros.add((row_idx, col_idx))
+                else:
+                    break
 
     def format_submatrix(self, start, end):
         """Formats the elements of a submatrix in right-justified columns.
@@ -617,20 +623,41 @@ class Assistant:
         # more versatile approach.
         #
         col_format = self.get_column_format()
+        self.find_leading_zeros()
 
         matrix = Table().grid()
         matrix.add_column(style="white")
 
+        last_row_idx = len(self.matrix) - 1
+
         for row_idx, row in enumerate(self.matrix):
             content = ""
             for col_idx, column in enumerate(row[start:end], start):
-                content += col_format[col_idx].format(str(column))
-            if row_idx != 0:
-                matrix.add_row(" ")
-            matrix.add_row(content + self.padding)
+                if (row_idx, col_idx) in self.leading_zeros:
+                    content += (
+                        "[echelon]"
+                        + col_format[col_idx].format(str(column))
+                        + "[/echelon]"
+                    )
+                else:
+                    content += col_format[col_idx].format(str(column))
+            matrix.add_row(content)
+            content = ""
+            if row_idx != last_row_idx:
+                for col_idx, column in enumerate(row[start:end], start):
+                    if (
+                        row_idx,
+                        col_idx,
+                    ) in self.leading_zeros:
+                        content += (
+                            "[echelon]" + col_format[col_idx].format("") + "[/echelon]"
+                        )
+                    else:
+                        content += col_format[col_idx].format("")
+                matrix.add_row(content)
         return matrix
 
-    def format_matrix(self, spacing=2):
+    def format_matrix(self):
         """Formats matrix for printing in console.
         """
         coeff_matrix = self.format_submatrix(0, self.nb_cols)
@@ -802,9 +829,10 @@ class Assistant:
             target_row
         ] = f"[same_row]{R}_{row_1+1}[/same_row] {op} {R}_{row_2+1} {RIGHT_ARROW} [same_row]{R}_{target_row+1}[/same_row]"
 
-        self.latex_current_row_operations[
-            target_row
-        ] = "\\scriptstyle " + f"{R}_{row_1+1}{op} {R}_{row_2+1} \\longrightarrow {R}_{target_row+1} \\\\"
+        self.latex_current_row_operations[target_row] = (
+            "\\scriptstyle "
+            + f"{R}_{row_1+1}{op} {R}_{row_2+1} \\longrightarrow {R}_{target_row+1} \\\\"
+        )
 
         return True
 
@@ -855,9 +883,10 @@ class Assistant:
         ] = f"[same_row]{R}_{row_1+1}[/same_row] {op} {factor} {R}_{row_2+1} {RIGHT_ARROW} [same_row]{R}_{target_row+1}[/same_row]"
 
         factor = self.latex_format_frac(factor)
-        self.latex_current_row_operations[
-            target_row
-        ] = "\\scriptstyle " + f"{R}_{row_1+1}{op} {factor} {R}_{row_2+1} \\longrightarrow {R}_{target_row+1} \\\\"
+        self.latex_current_row_operations[target_row] = (
+            "\\scriptstyle "
+            + f"{R}_{row_1+1}{op} {factor} {R}_{row_2+1} \\longrightarrow {R}_{target_row+1} \\\\"
+        )
 
         return True
 
@@ -888,11 +917,12 @@ class Assistant:
         except FileNotFoundError:
             pass
         app.destroy()
-        if filename is not None:
+        if filename and filename is not None:
             self.latex_content.append(LaTeX_end_document)
             text = "\n".join(self.latex_content)
             with open(filename, "w") as f:
                 f.write(text)
+            console.print(_("saved file") % filename)
 
 
 if __name__ == "__main__":
