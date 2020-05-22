@@ -57,6 +57,7 @@ dark_theme = Theme(  # suitable on a dark background
         "error": "bold red",
         "prompt": "spring_green4",
         "row_operation": "bold yellow",
+        "same_row": "bold white underline",
     }
 )
 
@@ -71,6 +72,7 @@ light_theme = Theme(  # suitable on a light background
         "error": "red",
         "prompt": "spring_green4",
         "row_operation": "spring_green4",
+        "same_row": "blue underline",
     }
 )
 
@@ -456,6 +458,7 @@ class Assistant:
         self.total_nb_cols = nb_cols + nb_augmented_cols
         self.current_row_operations = {}
 
+        self.latex_current_row_operations = {}
         self.latex_slide_no = 1
         self.latex_content = [LaTeX_begin_document]
         self.latex_previously_formatted_matrix = None
@@ -579,13 +582,7 @@ class Assistant:
 
         for row_idx, row in enumerate(self.matrix):
             if row_idx in self.current_row_operations:
-                matrix.append(
-                    "\\scriptstyle "
-                    + self.current_row_operations[row_idx].replace(
-                        RIGHT_ARROW, "\\longrightarrow"
-                    )
-                    + r"\\"
-                )
+                matrix.append(self.latex_current_row_operations[row_idx])
             else:
                 matrix.append(r"\\")
         matrix.append(LaTeX_end_row_op_matrix)
@@ -706,7 +703,13 @@ class Assistant:
         R = _("R_or_L")
         self.current_row_operations[
             target_row
-        ] = f"{factor} {R}_{row+1} {RIGHT_ARROW} {R}_{row+1}"
+        ] = f"{factor} [same_row]{R}_{row+1}[/same_row] {RIGHT_ARROW} [same_row]{R}_{row+1}[/same_row]"
+
+        factor = self.latex_format_frac(factor)
+
+        self.latex_current_row_operations[target_row] = (
+            "\\scriptstyle " + f"{factor}{R}_{row+1} \\longrightarrow {R}_{row+1} \\\\"
+        )
         return True
 
     def validate_scale_row(self, row, target_row, factor):
@@ -741,12 +744,20 @@ class Assistant:
         self.matrix[row_1], self.matrix[row_2] = self.matrix[row_2], self.matrix[row_1]
 
         R = _("R_or_L")
+
         self.current_row_operations[
             row_2
         ] = f"{R}_{row_1+1} {RIGHT_ARROW} {R}_{row_2+1}"
         self.current_row_operations[
             row_1
         ] = f"{R}_{row_2+1} {RIGHT_ARROW} {R}_{row_1+1}"
+
+        self.latex_current_row_operations[row_2] = (
+            "\\scriptstyle " + f"{R}_{row_1+1} \\longrightarrow {R}_{row_2+1} \\\\"
+        )
+        self.latex_current_row_operations[row_1] = (
+            "\\scriptstyle " + f"{R}_{row_2+1} \\longrightarrow {R}_{row_1+1} \\\\"
+        )
 
         return True
 
@@ -789,7 +800,11 @@ class Assistant:
         R = _("R_or_L")
         self.current_row_operations[
             target_row
-        ] = f"{R}_{row_1+1} {op} {R}_{row_2+1} {RIGHT_ARROW} {R}_{target_row+1}"
+        ] = f"[same_row]{R}_{row_1+1}[/same_row] {op} {R}_{row_2+1} {RIGHT_ARROW} [same_row]{R}_{target_row+1}[/same_row]"
+
+        self.latex_current_row_operations[
+            target_row
+        ] = "\\scriptstyle " + f"{R}_{row_1+1}{op} {R}_{row_2+1} \\longrightarrow {R}_{target_row+1} \\\\"
 
         return True
 
@@ -837,7 +852,12 @@ class Assistant:
         R = _("R_or_L")
         self.current_row_operations[
             target_row
-        ] = f"{R}_{row_1+1} {op} {factor} {R}_{row_2+1} {RIGHT_ARROW} {R}_{target_row+1}"
+        ] = f"[same_row]{R}_{row_1+1}[/same_row] {op} {factor} {R}_{row_2+1} {RIGHT_ARROW} [same_row]{R}_{target_row+1}[/same_row]"
+
+        factor = self.latex_format_frac(factor)
+        self.latex_current_row_operations[
+            target_row
+        ] = "\\scriptstyle " + f"{R}_{row_1+1}{op} {factor} {R}_{row_2+1} \\longrightarrow {R}_{target_row+1} \\\\"
 
         return True
 
