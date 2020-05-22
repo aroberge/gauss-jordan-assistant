@@ -203,7 +203,7 @@ translations["fr"][
     "Cannot multiply by zero"
 ] = "On ne peut pas multiplier une ligne par zéro."
 
-translations["en"]["No effect"] = "This row operation does nothing"
+translations["en"]["No effect"] = "This operation causes no change."
 translations["fr"]["No effect"] = "Cette opération ne change rien."
 
 translations["en"]["Must be the same line"] = "Start and end row must be the same."
@@ -358,6 +358,8 @@ class Assistant:
         self.spacing = 2  # spacing between columns
         self.padding = self.spacing * " "
 
+        print("lang =", LANG)
+
         self.interact()
 
     def interact(self):
@@ -380,17 +382,20 @@ class Assistant:
         """
         global console, LANG
 
-        if command.lower() == "light":
+        lowercase = command.lower()
+
+        if lowercase == "light":
             console = Console(theme=light_theme)
 
-        elif command.lower() == "dark":
+        elif lowercase == "dark":
             console = Console(theme=dark_theme)
 
-        elif command.lower() == "en":
-            LANG = "en"
-
-        elif command.lower() == "fr":
-            LANG = "fr"
+        elif lowercase in ["en", "fr"]:
+            if lowercase == LANG:
+                console.print(_("No effect"))
+            else:
+                LANG = lowercase
+                print("lang =", LANG)
 
         elif command.lower() == "latex":
             self.save_latex()
@@ -495,7 +500,7 @@ class Assistant:
         operations = self.format_row_operations()
 
         if operations is not None:
-            display = Table().grid(padding=(0, 3))
+            display = Table().grid()
             display.add_column()
             display.add_column()
             display.add_column()
@@ -578,7 +583,7 @@ class Assistant:
 
         fmt = "{:>%d}" % max_str_length
 
-        operations = Table().grid()
+        operations = Table().grid(padding=(0, 0, 0, 3))
         operations.add_column(style="row_operation")
 
         operations.add_row()
