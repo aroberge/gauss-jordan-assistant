@@ -36,10 +36,10 @@ from rich.markdown import Markdown
 from rich.table import Table
 from rich.theme import Theme
 
-# Since we already use Rich, might as well get pretty tracebacks.
+# Since we already use Rich, we might as well get pretty tracebacks. :-)
 from rich.traceback import install
 
-install(extra_lines=2)
+install(extra_lines=1)
 
 
 # ===============================================
@@ -303,9 +303,9 @@ LaTeX_begin_document = """
 % augmented matrix from http://tex.stackexchange.com/questions/2233
 \\makeatletter
 \\renewcommand*\\env@matrix[1][*\\c@MaxMatrixCols r]{%
-    \\hskip -\arraycolsep
-    \\let\\@ifnextchar\new@ifnextchar
-    \array{#1}}
+    \\hskip -\\arraycolsep
+    \\let\\@ifnextchar\\new@ifnextchar
+    \\array{#1}}
 \\makeatother
 
 \\newcommand{\\GJAfrac}[2]{#1/#2}
@@ -314,36 +314,29 @@ LaTeX_begin_document = """
 \\begin{document}
 """
 
-LaTeX_end_document = "\n\\end{document}"
+LaTeX_end_document = "\\end{document}"
 
 
 LaTeX_begin_frame = """
-
-\\begin{frame}[Slide %d]
+\\begin{frame}{Slide %d}
 \\[
 \\begin{matrix}[ccc]
-
 """
 
-LaTeX_end_frame = """
-\\end{matrix}
+LaTeX_end_frame = """\\end{matrix}
 \\]
 \\end{frame}
 
 %===========================================
 """
 
-LaTeX_begin_bmatrix = """
-\\begin{bmatrix}[%s%s]
-"""
+LaTeX_begin_bmatrix = "\\begin{bmatrix}[%s%s]"
 
-LaTeX_end_bmatrix = "\n\\end{bmatrix}\n\n"
+LaTeX_end_bmatrix = "\\end{bmatrix}\n"
 
-LaTeX_begin_row_op_matrix = """
-\\begin{matrix}[r]
-"""
+LaTeX_begin_row_op_matrix = "\\begin{matrix}[r]"
 
-LaTeX_end_row_op_matrix = "\n\\end{matrix}\n\n"
+LaTeX_end_row_op_matrix = "\\end{matrix}\n"
 
 
 # ===============================================
@@ -369,73 +362,72 @@ class Assistant:
 
     def interact(self):
         """Command interpreter"""
-        global console, LANG
-
         while True:
             command = self.user_input()
 
             if re.search(re_quit, command):
                 break
 
-            elif command.lower() == "light":
-                console = Console(theme=light_theme)
+            result = self.parse(command)
 
-            elif command.lower() == "dark":
-                console = Console(theme=dark_theme)
-
-            elif command.lower() == "en":
-                LANG = "en"
-
-            elif command.lower() == "fr":
-                LANG = "fr"
-
-            elif command.lower() == "latex":
-                self.save_latex()
-                continue
-
-            elif re.search(re_help, command):
-                console.print(_("help"), "\n")
-                continue
-
-            elif op := re.search(re_mat, command):
-                self.new_matrix(int(op.group(1)), int(op.group(2)))
-
-            elif op := re.search(re_aug_mat, command):
-                self.new_matrix(int(op.group(1)), int(op.group(2)), int(op.group(3)))
-
-            elif op := re.search(re_row_interchange, command):
-                if not self.interchange_rows(int(op.group(1)), int(op.group(2))):
-                    continue
-
-            elif op := re.search(re_row_scaling, command):
-                if not self.scale_row(
-                    Fraction(op.group(1)), int(op.group(2)), int(op.group(3))
-                ):
-                    continue
-
-            elif op := re.search(re_row_lin_combo_1, command):
-                if not self.linear_combo_1(
-                    int(op.group(1)), op.group(2), int(op.group(3)), int(op.group(4)),
-                ):
-                    continue
-
-            elif op := re.search(re_row_lin_combo_2, command):
-                if not self.linear_combo_2(
-                    int(op.group(1)),
-                    op.group(2),
-                    Fraction(op.group(3)),
-                    int(op.group(4)),
-                    int(op.group(5)),
-                ):
-                    continue
-
-            else:
-                self.print_error(_("Unknown operation"))
-                continue
-
-            if self.matrix is not None:
+            if result and self.matrix is not None:
                 self.console_print()
                 self.current_row_operations.clear()
+
+    def parse(self, command):
+        """Parses command controlling the information displayed.
+           To show the latest matrix update, an operation must return True.
+        """
+        global console, LANG
+
+        if command.lower() == "light":
+            console = Console(theme=light_theme)
+
+        elif command.lower() == "dark":
+            console = Console(theme=dark_theme)
+
+        elif command.lower() == "en":
+            LANG = "en"
+
+        elif command.lower() == "fr":
+            LANG = "fr"
+
+        elif command.lower() == "latex":
+            self.save_latex()
+
+        elif re.search(re_help, command):
+            console.print(_("help"), "\n")
+
+        elif op := re.search(re_mat, command):
+            return self.new_matrix(int(op.group(1)), int(op.group(2)))
+
+        elif op := re.search(re_aug_mat, command):
+            return self.new_matrix(int(op.group(1)), int(op.group(2)), int(op.group(3)))
+
+        elif op := re.search(re_row_interchange, command):
+            return self.interchange_rows(int(op.group(1)), int(op.group(2)))
+
+        elif op := re.search(re_row_scaling, command):
+            return self.scale_row(
+                Fraction(op.group(1)), int(op.group(2)), int(op.group(3))
+            )
+
+        elif op := re.search(re_row_lin_combo_1, command):
+            return self.linear_combo_1(
+                int(op.group(1)), op.group(2), int(op.group(3)), int(op.group(4)),
+            )
+
+        elif op := re.search(re_row_lin_combo_2, command):
+            return self.linear_combo_2(
+                int(op.group(1)),
+                op.group(2),
+                Fraction(op.group(3)),
+                int(op.group(4)),
+                int(op.group(5)),
+            )
+
+        else:
+            self.print_error(_("Unknown operation"))
 
     def new_matrix(self, nb_rows, nb_cols, nb_augmented_cols=0):
         """Sets the parameters for a new matrix.
@@ -454,7 +446,7 @@ class Assistant:
         self.nb_augmented_cols = nb_augmented_cols
         self.total_nb_cols = nb_cols + nb_augmented_cols
         self.current_row_operations = {}
-        self.new_matrix_get_rows()
+        return self.new_matrix_get_rows()
 
     def new_matrix_get_rows(self):
         """Command interpreter active when a new matrix is created.
@@ -468,14 +460,15 @@ class Assistant:
             if row := re.findall(re_fract, command):
                 done = self.new_matrix_add_row(row)
                 if done:
-                    break
+                    self.prompt = self.default_prompt
+                    return True
             elif re.search(re_quit, command):
                 self.print_error(_("Data entry stopped."))
                 self.matrix = None
-                break
+                self.prompt = self.default_prompt
+                return False
             else:
                 self.print_error(_("Wrong format"))
-        self.prompt = self.default_prompt
 
     def new_matrix_add_row(self, row):
         """Adds a single row of coefficients for a new matrix."""
@@ -793,15 +786,21 @@ class Assistant:
         localRoot.withdraw()
 
         try:
-            filename = filedialog.asksaveasfilename(
-                filetypes=(("LaTeX", "*.tex"),)
-            )
+            filename = filedialog.asksaveasfilename(filetypes=(("LaTeX", "*.tex"),))
         except FileNotFoundError:
             pass
         localRoot.destroy()
         if filename is not None:
             with open(filename, "w") as f:
-                f.write("This is a test")
+                f.write(self.create_latex_content())
+
+    def create_latex_content(self):
+        parts = [LaTeX_begin_document]
+        parts.append(LaTeX_begin_frame % 1)
+        parts.append("Test")
+        parts.append(LaTeX_end_frame)
+        parts.append(LaTeX_end_document)
+        return "\n".join(parts)
 
 
 if __name__ == "__main__":
