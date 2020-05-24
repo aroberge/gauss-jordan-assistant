@@ -15,21 +15,6 @@ This project is developed on Windows but should work using other operating syste
 
 ## Why?
 
-I teach an introductory course in Linear Algebra to non-math majors using
-videoconference. As I teach remotely, I share the content of my screen.
-Many of the examples require, at one stage or another, that
-Gaussian elimination on a matrix be performed.
-
-My hand-writing (either using a mouse or a tablet) on a computer screen
-is absolutely atrocious.  In my experience, using slides with all the content
-written up in advance (which is what I have mostly done until now)
-is not a good way to maintain student engagement.
-
-As a result, I have developed this tool which allows me to do
-live computations on my screen in a legible way.  Using this tool,
-I can ask students to guide me in finding a solution to any
-numerical problem that we are looking at, just as easily as I could
-do it in a traditional classroom with a blackboard.
 
 ## Bonus (to come)
 

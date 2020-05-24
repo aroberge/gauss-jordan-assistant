@@ -46,7 +46,7 @@ install(extra_lines=1)
 # Rich specific definitions
 # ===============================================
 
-dark_theme = Theme(  # suitable on a dark background
+dark_background_theme = Theme(
     {
         "markdown.h1.border": "deep_sky_blue1",
         "markdown.h1": "bold yellow",
@@ -54,6 +54,7 @@ dark_theme = Theme(  # suitable on a dark background
         "markdown.item.bullet": "spring_green4",
         "markdown.code": "bold yellow",
         "matrix": "deep_sky_blue1",
+        "matrix_element": "white",
         "error": "bold red",
         "prompt": "spring_green4",
         "row_operation": "bold yellow",
@@ -62,7 +63,7 @@ dark_theme = Theme(  # suitable on a dark background
     }
 )
 
-light_theme = Theme(  # suitable on a light background
+light_background_theme = Theme(
     {
         "markdown.h1.border": "deep_sky_blue1",
         "markdown.h1": "blue",
@@ -70,6 +71,7 @@ light_theme = Theme(  # suitable on a light background
         "markdown.item.bullet": "spring_green4",
         "markdown.code": "purple",
         "matrix": "deep_sky_blue1",
+        "matrix_element": "black",
         "error": "red",
         "prompt": "spring_green4",
         "row_operation": "spring_green4",
@@ -78,7 +80,29 @@ light_theme = Theme(  # suitable on a light background
     }
 )
 
-console = Console(theme=dark_theme)
+THEME = dark_background_theme
+console = Console(theme=THEME)
+
+theme_demo_en = """
+Colours are now as follows:
+
+"input >"              [prompt]input >[/prompt]
+"error"                [error]error[/error]
+"|  0  1  |"           [matrix]| [echelon] 0 [/echelon] [matrix_element] 1 [/matrix_element] |[/matrix]
+"R_1 + 2 R_2 --> R_1"  [same_row]R_1[/same_row][row_operation] + 2 R_2 --> [/row_operation][same_row]R_1[/same_row]
+
+"""
+
+theme_demo_fr = """
+Les couleurs ont été changées comme suit :
+
+"entrée >"             [prompt]entrée >[/prompt]
+"erreur"               [error]erreur[/error]
+"|  0  1  |"           [matrix]| [echelon] 0 [/echelon] [matrix_element] 1 [/matrix_element] |[/matrix]
+"L_1 + 2 L_2 --> L_1"  [same_row]L_1[/same_row][row_operation] + 2 L_2 --> [/row_operation][same_row]L_1[/same_row]
+
+"""
+
 
 # Design our style of "box" to be used by rich
 
@@ -114,8 +138,7 @@ def _(text):
 help_en = """# Available commands
 
 - `fr`  : change la langue au français
-- light : change theme colours for light background
-- dark  : change theme colours for dark background (default)
+- colours/colors : toggle colours, between theme designed for dark or light backgrounds.
 
 ## Matrix operations
 
@@ -143,8 +166,7 @@ Then, perform some elementary row operations:
 help_fr = """# Liste des commandes
 
 - `en`  : changes language to English
-- light : change les couleurs pour un arrière-plan pâle
-- dark  : change les couleurs pour un arrière-plan foncé (défaut)
+- couleurs : change les couleurs entre deux choix selon que l' arrière-plan est pâle ou foncé
 
 ## Opérations sur les matrices
 
@@ -352,7 +374,6 @@ LaTeX_end_row_op_matrix = "\\end{matrix}\n"
 
 
 RIGHT_ARROW = "-->"  # used in printing row operations
-# Warning: using unicode arrows instead could mess up the alignment
 
 
 class Assistant:
@@ -383,15 +404,20 @@ class Assistant:
         """Parses command controlling the information displayed.
            To show the latest matrix update, an operation must return True.
         """
-        global console, LANG
+        global console, LANG, THEME
 
         lowercase = command.lower()
 
-        if lowercase == "light":
-            console = Console(theme=light_theme)
-
-        elif lowercase == "dark":
-            console = Console(theme=dark_theme)
+        if lowercase in ["colors", "colours", "couleurs"]:
+            if THEME == dark_background_theme:
+                THEME = light_background_theme
+            else:
+                THEME = dark_background_theme
+            console = Console(theme=THEME)
+            if LANG == "en":
+                console.print(theme_demo_en)
+            else:
+                console.print(theme_demo_fr)
 
         elif lowercase in ["en", "fr"]:
             if lowercase == LANG:
@@ -508,10 +534,7 @@ class Assistant:
         operations = self.format_row_operations()
 
         if operations is not None:
-            display = Table().grid()
-            display.add_column()
-            display.add_column()
-            display.add_column()
+            display = Table("", "", "").grid()
             display.add_row(self.previously_formatted_matrix, operations, matrix)
             console.print(display)
         else:
@@ -626,7 +649,7 @@ class Assistant:
         self.find_leading_zeros()
 
         matrix = Table().grid()
-        matrix.add_column(style="white")
+        matrix.add_column(style="matrix_element")
 
         last_row_idx = len(self.matrix) - 1
 
@@ -645,10 +668,7 @@ class Assistant:
             content = ""
             if row_idx != last_row_idx:
                 for col_idx, column in enumerate(row[start:end], start):
-                    if (
-                        row_idx,
-                        col_idx,
-                    ) in self.leading_zeros:
+                    if (row_idx, col_idx,) in self.leading_zeros:
                         content += (
                             "[echelon]" + col_format[col_idx].format("") + "[/echelon]"
                         )
@@ -662,8 +682,9 @@ class Assistant:
         """
         coeff_matrix = self.format_submatrix(0, self.nb_cols)
 
-        matrix = Table(show_header=False, box=MATRIX, style="matrix", pad_edge=False,)
-        matrix.add_column()
+        matrix = Table(
+            "", show_header=False, box=MATRIX, style="matrix", pad_edge=False,
+        )
         if not self.nb_augmented_cols:
             matrix.add_row(coeff_matrix)
             return matrix
