@@ -399,6 +399,7 @@ class Assistant:
                 self.console_print()
                 self.update_latex_content()
                 self.current_row_operations.clear()
+                self.latex_current_row_operations.clear()
 
     def parse(self, command):
         """Parses command controlling the information displayed.
@@ -544,7 +545,6 @@ class Assistant:
 
     def update_latex_content(self):
         matrix = self.latex_format_matrix()
-        # operations = self.latex_format_row_operations()
 
         self.latex_content.append(LaTeX_begin_frame % self.latex_slide_no)
         if self.latex_previously_formatted_matrix is None:
