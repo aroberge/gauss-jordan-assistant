@@ -21,7 +21,7 @@ The organisation is as follows:
 
 """
 
-__version__ = "0.2"
+__version__ = "0.2.1"
 
 import re
 import tkinter
@@ -154,7 +154,7 @@ Then, perform some elementary row operations:
 
 - `R_i  <-->  R_j`              : row exchange
 - `R_i  +/-  [f] R_j  -->  R_i` : linear combination (do not write `f` if `f=1`)
-- `f R_i  -->  R_i`             : multiplication par a scalar
+- `f R_i  -->  R_i`             : multiplication by a scalar
 
 ## Other commands
 
