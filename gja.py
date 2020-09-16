@@ -302,7 +302,7 @@ re_aug_mat = re.compile(r"^\s*mat\s*(\d+)\s*x\s*(\d+)\s*\|\s*(\d+)\s*$", re.IGNO
 re_row_interchange = re.compile(r"""^\s*[LR]_?(\d)\s*<-+>\s*[LR]_?(\d)\s*$""")
 
 # This matches something like 1/2 R_3 --> R_3
-re_row_scaling = re.compile(r"^\s*(\d+/?\d*)\s*[LR]_?(\d)\s*-+>\s*[LR]_?(\d)\s*$")
+re_row_scaling = re.compile(r"^\s*(-?\d+/?\d*)\s*[LR]_?(\d)\s*-+>\s*[LR]_?(\d)\s*$")
 
 # This matches something like R_2 - R_3 --> R_2
 re_row_lin_combo_1 = re.compile(
