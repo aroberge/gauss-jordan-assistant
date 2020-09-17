@@ -59,7 +59,7 @@ dark_background_theme = Theme(
         "prompt": "spring_green4",
         "row_operation": "bold yellow",
         "same_row": "bold white underline",
-        "echelon": "white on grey15",
+        "echelon": "white on dark_red",
     }
 )
 
